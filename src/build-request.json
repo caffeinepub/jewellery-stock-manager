@@ -1,0 +1,197 @@
+{
+  "kind": "build_request",
+  "title": "Simplify UI, fix Dashboard totals, redesign Sales/Returns with CODE chart tabs and live stock filtering",
+  "projectName": "Jewellery Stock Manager",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-36",
+      "text": "Remove excessive celebration text, titles, and use case explanations from all screens to create a cleaner, more professional UI across Dashboard, Sales, Purchases, Returns, Stock View, Customers, and Factory pages",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "Don't want too much celebration in each screen about the title and its use case"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All page headers use concise titles without lengthy explanations",
+        "No redundant descriptive text about what each section does",
+        "UI focuses on data and actions rather than instructional content"
+      ]
+    },
+    {
+      "id": "REQ-37",
+      "text": "Fix Dashboard analytics calculations in frontend/src/pages/Dashboard.tsx to correctly derive and aggregate values from all four transaction types (Sales, Purchases, Sales Return, Purchase Return) ensuring totals match the sum of individual tab data",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "Dashboard vales don't derive values for each of other 4 tabs of s/p/sr/pr"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Dashboard total stock equals current inventory after all transactions",
+        "Transaction counts match the sum of Sales + Purchases + Sales Return + Purchase Return",
+        "Weight totals (GW, NW, SW) aggregate correctly across all transaction types",
+        "Dashboard values update in real-time when new transactions are recorded"
+      ]
+    },
+    {
+      "id": "REQ-38",
+      "text": "Simplify main Dashboard page layout in frontend/src/pages/Dashboard.tsx by removing duplicate data displays and ensuring charts and tabs below show complementary information rather than repeating the same statistics",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "On main page make it easy, and don't repeat the same data displayed in charts and tabs below"
+        ]
+      },
+      "acceptanceCriteria": [
+        "No statistics are displayed in both summary cards and chart sections",
+        "Layout presents overview metrics at the top with detailed breakdowns below",
+        "User can understand the full picture without seeing the same numbers twice"
+      ]
+    },
+    {
+      "id": "REQ-39",
+      "text": "Redesign Sales and Sales Return 'Make Entry' pages (frontend/src/pages/Sales.tsx and frontend/src/pages/Returns.tsx) to display CODE alphabet groups as colorful chart tabs instead of the current tabbed stock selector interface",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "The data filtered as per code alphabet names should be in chart tabs which are colorful"
+        ]
+      },
+      "acceptanceCriteria": [
+        "CODE prefix groups (e.g., NKST, CTNKST) render as visual chart-style tabs with distinct colors",
+        "Each chart tab is clickable and visually distinct",
+        "Current stock selector component is replaced with this chart tab interface"
+      ]
+    },
+    {
+      "id": "REQ-40",
+      "text": "Implement drill-down functionality in Sales and Sales Return pages where clicking a CODE chart tab displays only the stock rows matching that specific CODE prefix, with row selection confined within that single tab view",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "relevant data about the rows matching the code should be displayed when hit on such codes chart tab. Selecting of rows should happen once inside the tab, and it should be confined before moving back to various code chart tab"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Clicking a CODE chart tab navigates to a filtered view showing only matching stock items",
+        "Users can select multiple rows within the filtered view",
+        "Selections are isolated per CODE tab and do not carry over when switching tabs",
+        "A back or return action brings the user to the chart tab overview"
+      ]
+    },
+    {
+      "id": "REQ-41",
+      "text": "Allow users to navigate between multiple CODE chart tabs, accumulate row selections from each tab, then return to the chart tab overview screen where a 'Record Entry' button finalizes all selected rows as a single batch transaction for Sales or Sales Return",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "The user can still open another chart tab and select more rows and then finally when back to chart tab screen should have an option to record the total sales or sales return"
+        ]
+      },
+      "acceptanceCriteria": [
+        "User can visit multiple CODE tabs sequentially and select rows in each",
+        "All selections across tabs are aggregated and preserved",
+        "Chart tab overview displays a 'Record Entry' button when selections exist",
+        "Clicking 'Record Entry' submits all selected items as a single transaction"
+      ]
+    },
+    {
+      "id": "REQ-42",
+      "text": "Update stock filtering logic in Sales, Purchases, Sales Return, and Purchase Return pages to display only current live stock that reflects the state after the most recent transaction, ensuring items already assigned to customers or removed from inventory are excluded from selection",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "These order lines under each sales/purchase/sales return and purchase return should be about the current live stock which takes affect after one entry is made. Suppose one sale entry is made for a client then that product rows moves to customer and the next selection rows the rows previously selected for customers get removed"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Stock selector in each transaction page queries current inventory state from backend",
+        "Items sold to a customer are immediately removed from available stock",
+        "Purchase entries add new items to available stock instantly",
+        "Sales Return entries restore items to available stock",
+        "Purchase Return entries remove items from available stock"
+      ]
+    },
+    {
+      "id": "REQ-43",
+      "text": "Implement real-time inventory state management in backend/main.mo that updates the current stock immediately after each transaction is recorded, ensuring Sales moves items to customer holdings, Purchases add to total stock, Sales Return restores to total stock, and Purchase Return removes from total stock",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "These order lines under each sales/purchase/sales return and purchase return should be about the current live stock which takes affect after one entry is made"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend maintains a live current stock collection separate from transaction history",
+        "Sale transactions decrement items from current stock and assign to customer",
+        "Purchase transactions increment current stock",
+        "Sales Return transactions increment current stock",
+        "Purchase Return transactions decrement current stock",
+        "Query functions return only currently available inventory for selection"
+      ]
+    },
+    {
+      "id": "REQ-44",
+      "text": "Optimize transaction recording performance in backend/main.mo and frontend transaction pages to ensure multi-row batch entries across Sales, Purchases, Sales Return, and Purchase Return are processed quickly and instantly without delays",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "Recording entries of multiple row in each of sales/purchase/sales return and purchase return should be quick and instant and time consuming"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Batch submission of multiple rows completes in under 2 seconds",
+        "No loading spinners for more than 2 seconds during submission",
+        "Backend processes batch inserts efficiently",
+        "UI remains responsive during transaction recording",
+        "Success feedback appears immediately after submission"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not change the backend single-actor architecture defined in backend/main.mo",
+    "Do not modify immutable frontend paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui",
+    "Maintain existing scanner string parser logic in frontend/src/utils/scannerParser.ts",
+    "Preserve existing data models for JewelleryItem, TransactionRecord, and Customer in backend/main.mo"
+  ],
+  "nonGoals": [
+    "Changing the technology stack (React, Motoko, Tailwind, React Query)",
+    "Adding external database integrations",
+    "Implementing real-time WebSocket connections",
+    "Adding authentication providers beyond Internet Identity",
+    "Creating mobile-specific views or responsive breakpoints beyond existing Tailwind defaults"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

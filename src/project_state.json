@@ -1,0 +1,546 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 11,
+  "summary": "Jewellery stock management system with dashboard for analytics, and dedicated sections for sales, purchases, and returns (split into Purchase Return and Sales Return). Each section supports Excel uploads to automatically parse jewellery scanner strings (extracting GW, SW, NW, PCS, CODE with validation) and manual data entry. Unified stock view updates in real-time as transactions are recorded. Customer ledger tracking for sales and sales returns. Factory ledger for purchases and purchase returns linked to Zyra Master Production.",
+  "architectural_notes": [
+    "System designed around four main sections: Dashboard, Sales, Purchases, Returns",
+    "Excel upload functionality required for bulk data entry",
+    "Real-time stock synchronization across all transaction types",
+    "Scanner string parser must extract: Gross Weight (GW), Stone Weight (SW), Net Weight (NW), Pieces (PCS), and Product Code (CODE)",
+    "Validation layer needed for parsed jewellery data",
+    "Parser must extract CODE from first alphabet character to end of string",
+    "PCS extraction: scan backwards from CODE start, find first numeric digit (0-9), ignore spaces/dots/symbols",
+    "weightBlock cleaning: remove spaces, collapse repeated dots to single dot, remove non-digit/non-dot chars, normalize leading dot (e.g., '.050' → '0.050')",
+    "Decimal splitting: try all possible combinations to find 3-number (GW, SW, NW where GW = SW + NW) or 2-number (GW, NW where GW = NW and SW = 0) valid partitions",
+    "Use exact decimal arithmetic (no floating-point tolerance); STATUS = VALID only if equation satisfied exactly, MISTAKE if structure valid but equation fails, INVALID if no valid structure"
+  ],
+  "known_issues": [],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-create-a-dashboard-page-displaying-analytics-for-jewellery-stock-including-total-inventory-value-number-of-pieces-and-transaction-summaries-sales-purchases-returns",
+      "title": "Create a dashboard page displaying analytics for jewellery stock including total inventory value, number of pieces, and transaction summaries (sales, purchases, returns)",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-sales-section-with-excel-file-upload-capability-that-parses-jewellery-scanner-strings-to-extract-gw-gross-weight-sw-stone-weight-nw-net-weight-pcs-pieces-and-code-fields-with-validation",
+      "title": "Create a Sales section with Excel file upload capability that parses jewellery scanner strings to extract GW (Gross Weight), SW (Stone Weight), NW (Net Weight), PCS (Pieces), and CODE fields with validation",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-purchases-section-with-excel-file-upload-capability-that-parses-jewellery-scanner-strings-to-extract-gw-gross-weight-sw-stone-weight-nw-net-weight-pcs-pieces-and-code-fields-with-validation",
+      "title": "Create a Purchases section with Excel file upload capability that parses jewellery scanner strings to extract GW (Gross Weight), SW (Stone Weight), NW (Net Weight), PCS (Pieces), and CODE fields with validation",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-returns-section-with-excel-file-upload-capability-that-parses-jewellery-scanner-strings-to-extract-gw-gross-weight-sw-stone-weight-nw-net-weight-pcs-pieces-and-code-fields-with-validation",
+      "title": "Create a Returns section with Excel file upload capability that parses jewellery scanner strings to extract GW (Gross Weight), SW (Stone Weight), NW (Net Weight), PCS (Pieces), and CODE fields with validation",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-unified-stock-view-page-that-displays-all-jewellery-items-in-inventory-with-their-details-code-gw-sw-nw-pcs-and-updates-in-real-time-as-sales-purchases-and-returns-are-processed",
+      "title": "Create a unified stock view page that displays all jewellery items in inventory with their details (CODE, GW, SW, NW, PCS) and updates in real-time as sales, purchases, and returns are processed",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-design-a-cohesive-visual-theme-for-the-jewellery-stock-management-system-with-elegant-typography-refined-color-palette-suitable-for-luxury-inventory-management-and-consistent-layout-patterns-across-all-pages",
+      "title": "Design a cohesive visual theme for the jewellery stock management system with elegant typography, refined color palette suitable for luxury inventory management, and consistent layout patterns across all pages",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-replace-the-existing-scanner-string-parser-logic-in-frontend-src-utils-scannerparser-ts-with-an-improved-algorithm-that-collapses-repeated-dots-normalizes-leading-dot-decimals-e-g-050-to-0-050-and-uses-exhaustive-candidate-partitioning-to-find-valid-decimal-triplets-gw-sw-nw-where-gw-sw-nw-or-valid-pairs-gw-nw-where-gw-nw-and-sw-0",
+      "title": "Replace the existing scanner string parser logic in frontend/src/utils/scannerParser.ts with an improved algorithm that collapses repeated dots, normalizes leading-dot decimals (e.g., '.050' to '0.050'), and uses exhaustive candidate partitioning to find valid decimal triplets (GW, SW, NW) where GW = SW + NW, or valid pairs (GW, NW) where GW = NW and SW = 0",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-pcs-pieces-extraction-by-scanning-backwards-from-the-code-start-position-up-to-8-characters-to-find-the-first-digit-which-represents-the-piece-count",
+      "title": "Implement PCS (pieces) extraction by scanning backwards from the CODE start position up to 8 characters to find the first digit, which represents the piece count",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-validation-status-tracking-with-three-states-valid-exact-match-found-mistake-valid-decimal-structure-found-but-math-does-not-satisfy-gw-sw-nw-or-gw-nw-and-invalid-no-valid-decimal-structure-found-or-missing-required-fields",
+      "title": "Add validation status tracking with three states: VALID (exact match found), MISTAKE (valid decimal structure found but math does not satisfy GW = SW + NW or GW = NW), and INVALID (no valid decimal structure found or missing required fields)",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-transactionpreview-component-to-display-the-validation-status-for-each-parsed-item-and-show-visual-indicators-success-warning-error-styling-based-on-the-status-field",
+      "title": "Update the TransactionPreview component to display the validation status for each parsed item and show visual indicators (success/warning/error styling) based on the status field",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-prevent-submission-of-transactions-containing-items-with-mistake-or-invalid-status-and-display-a-clear-error-message-prompting-the-user-to-correct-the-excel-file-data-before-resubmitting",
+      "title": "Prevent submission of transactions containing items with MISTAKE or INVALID status, and display a clear error message prompting the user to correct the Excel file data before resubmitting",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-the-scanner-string-parser-in-frontend-src-utils-scannerparser-ts-to-implement-deterministic-code-extraction-by-finding-the-first-alphabet-character-a-z-and-treating-everything-from-that-position-to-the-end-as-code",
+      "title": "Rewrite the scanner string parser in frontend/src/utils/scannerParser.ts to implement deterministic CODE extraction by finding the first alphabet character [A-Z] and treating everything from that position to the end as CODE",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-robust-pcs-detection-in-frontend-src-utils-scannerparser-ts-by-scanning-backwards-from-the-position-just-before-code-until-finding-the-first-numeric-digit-0-9-ignoring-spaces-dots-and-other-symbols-with-pcs-being-exactly-that-single-digit",
+      "title": "Implement robust PCS detection in frontend/src/utils/scannerParser.ts by scanning backwards from the position just before CODE until finding the first numeric digit (0-9), ignoring spaces, dots, and other symbols, with PCS being exactly that single digit",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-weightblock-cleaning-logic-in-frontend-src-utils-scannerparser-ts-that-extracts-everything-before-pcs-removes-spaces-replaces-multiple-consecutive-dots-with-a-single-dot-removes-any-characters-except-digits-and-dots-and-converts-leading-dot-decimals-e-g-050-to-zero-prefixed-format-e-g-0-050",
+      "title": "Implement weightBlock cleaning logic in frontend/src/utils/scannerParser.ts that extracts everything before PCS, removes spaces, replaces multiple consecutive dots with a single dot, removes any characters except digits and dots, and converts leading-dot decimals (e.g., '.050') to zero-prefixed format (e.g., '0.050')",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-exhaustive-mathematical-split-logic-in-frontend-src-utils-scannerparser-ts-that-tries-all-possible-combinations-to-split-the-cleaned-weightblock-into-either-3-numbers-gw-sw-nw-where-gw-sw-nw-or-2-numbers-gw-nw-where-gw-nw-and-sw-0-accepting-decimals-with-1-3-decimal-places-without-assuming-fixed-decimal-length-or-fixed-number-lengths-using-exact-decimal-math-without-floating-point-rounding",
+      "title": "Implement exhaustive mathematical split logic in frontend/src/utils/scannerParser.ts that tries ALL possible combinations to split the cleaned weightBlock into either 3 numbers (GW, SW, NW where GW = SW + NW) or 2 numbers (GW, NW where GW = NW and SW = 0), accepting decimals with 1-3 decimal places without assuming fixed decimal length or fixed number lengths, using exact decimal math without floating point rounding",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-status-determination-logic-in-frontend-src-utils-scannerparser-ts-that-sets-status-to-valid-when-valid-structure-exists-and-the-equation-is-satisfied-with-exact-equality-mistake-when-structure-is-found-but-the-equation-fails-and-invalid-when-structure-cannot-be-parsed-with-no-tolerance-difference-allowed",
+      "title": "Implement STATUS determination logic in frontend/src/utils/scannerParser.ts that sets STATUS to 'VALID' when valid structure exists AND the equation is satisfied with exact equality, 'MISTAKE' when structure is found BUT the equation fails, and 'INVALID' when structure cannot be parsed, with no tolerance difference allowed",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-rewritten-parser-in-frontend-src-utils-scannerparser-ts-handles-all-edge-cases-deterministically-2-number-rows-no-stone-weight-messy-dots-multiple-consecutive-dots-missing-leading-zeros-050-format-extra-spaces-throughout-the-string-variable-decimal-places-not-fixed-at-3-and-pcs-not-immediately-adjacent-to-code",
+      "title": "Ensure the rewritten parser in frontend/src/utils/scannerParser.ts handles all edge cases deterministically: 2-number rows (no stone weight), messy dots (multiple consecutive dots), missing leading zeros (.050 format), extra spaces throughout the string, variable decimal places (not fixed at 3), and PCS not immediately adjacent to CODE",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-redesign-the-main-page-navigation-in-frontend-src-components-layout-tsx-to-provide-a-simplified-one-touch-tab-structure-with-clear-visual-hierarchy-and-minimal-clutter-ensuring-all-primary-functions-dashboard-sales-purchases-returns-stock-view-customers-factory-are-easily-accessible",
+      "title": "Redesign the main page navigation in frontend/src/components/Layout.tsx to provide a simplified, one-touch tab structure with clear visual hierarchy and minimal clutter, ensuring all primary functions (Dashboard, Sales, Purchases, Returns, Stock View, Customers, Factory) are easily accessible",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-split-the-returns-section-into-two-distinct-types-purchase-return-and-sales-return-updating-frontend-src-pages-returns-tsx-to-provide-separate-tabs-or-sections-for-each-return-type-with-appropriate-transaction-recording-logic",
+      "title": "Split the Returns section into two distinct types: Purchase Return and Sales Return, updating frontend/src/pages/Returns.tsx to provide separate tabs or sections for each return type with appropriate transaction recording logic",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-submit-button-positioned-at-the-top-of-the-transactionpreview-component-after-excel-data-is-loaded-which-stores-and-saves-the-uploaded-transaction-data-to-the-backend-when-clicked",
+      "title": "Add a 'Submit' button positioned at the top of the TransactionPreview component after Excel data is loaded, which stores and saves the uploaded transaction data to the backend when clicked",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-inline-edit-and-delete-controls-for-each-row-in-transactionpreview-component-that-has-mistake-or-invalid-status-allowing-users-to-manually-correct-field-values-gw-sw-nw-pcs-code-or-remove-the-row-before-submission",
+      "title": "Add inline edit and delete controls for each row in TransactionPreview component that has MISTAKE or INVALID status, allowing users to manually correct field values (GW, SW, NW, PCS, CODE) or remove the row before submission",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-manual-data-entry-option-in-all-transaction-sections-sales-purchases-purchase-return-sales-return-that-displays-a-form-with-input-fields-for-gw-sw-nw-pcs-and-code-allowing-users-to-add-items-without-uploading-an-excel-file",
+      "title": "Add a manual data entry option in all transaction sections (Sales, Purchases, Purchase Return, Sales Return) that displays a form with input fields for GW, SW, NW, PCS, and CODE, allowing users to add items without uploading an Excel file",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-dashboard-page-in-frontend-src-pages-dashboard-tsx-to-prominently-display-total-current-stock-at-the-top-with-real-time-updates-reflecting-transactions-from-sales-purchases-returns-and-manual-entries",
+      "title": "Update the Dashboard page in frontend/src/pages/Dashboard.tsx to prominently display total current stock at the top, with real-time updates reflecting transactions from Sales, Purchases, Returns, and manual entries",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-default-sorting-by-design-code-code-field-in-the-stocktable-component-in-frontend-src-components-stocktable-tsx-and-add-ui-controls-to-allow-users-to-sort-by-any-excel-column-header-gw-sw-nw-pcs-code",
+      "title": "Implement default sorting by design code (CODE field) in the StockTable component in frontend/src/components/StockTable.tsx, and add UI controls to allow users to sort by any Excel column header (GW, SW, NW, PCS, CODE)",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-two-sub-tabs-to-each-transaction-section-sales-purchases-purchase-return-sales-return-make-entry-and-view-totals-updating-the-respective-page-components-to-display-these-sub-tabs-with-appropriate-content",
+      "title": "Add two sub-tabs to each transaction section (Sales, Purchases, Purchase Return, Sales Return): 'Make Entry' and 'View Totals', updating the respective page components to display these sub-tabs with appropriate content",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-the-view-totals-sub-tab-for-each-transaction-type-display-current-day-transaction-totals-and-overall-period-totals-grouped-by-design-category-code-prefix-with-data-analysis-visualizations",
+      "title": "In the 'View Totals' sub-tab for each transaction type, display current day transaction totals and overall period totals grouped by design category (CODE prefix), with data analysis visualizations",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-the-make-entry-sub-tab-display-the-current-total-stock-grouped-into-tabs-by-alphabetic-code-prefix-e-g-nkst-ctnkst-extracted-from-the-code-field-with-a-search-bar-above-all-tabs-to-filter-and-select-codes",
+      "title": "In the 'Make Entry' sub-tab, display the current total stock grouped into tabs by alphabetic CODE prefix (e.g., NKST, CTNKST) extracted from the CODE field, with a search bar above all tabs to filter and select codes",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-row-selection-highlight-within-each-code-prefix-tab-in-the-make-entry-sub-tab-allowing-single-or-multiple-row-selection-with-a-record-entry-button-at-the-top-to-process-all-selected-rows-as-a-batch-transaction",
+      "title": "Implement row selection (highlight) within each CODE prefix tab in the 'Make Entry' sub-tab, allowing single or multiple row selection, with a 'Record Entry' button at the top to process all selected rows as a batch transaction",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-before-recording-sales-or-sales-return-entries-display-an-optional-customer-name-input-field-ensuring-it-is-not-mandatory-but-captured-if-provided",
+      "title": "Before recording Sales or Sales Return entries, display an optional customer name input field, ensuring it is not mandatory but captured if provided",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-new-customer-tab-in-the-main-navigation-that-displays-a-list-of-customers-and-their-stock-history-ledger-with-transaction-details-and-data-analysis-visualizations",
+      "title": "Create a new Customer tab in the main navigation that displays a list of customers and their stock history ledger with transaction details and data analysis visualizations",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-factory-tab-below-the-customer-tab-in-the-main-navigation-that-displays-all-entries-related-to-zyra-master-production-purchases-and-purchase-returns-in-a-ledger-format-with-date-wise-records",
+      "title": "Create a Factory tab below the Customer tab in the main navigation that displays all entries related to Zyra Master Production (Purchases and Purchase Returns) in a ledger format with date-wise records",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-excessive-celebration-text-titles-and-use-case-explanations-from-all-screens-to-create-a-cleaner-more-professional-ui-across-dashboard-sales-purchases-returns-stock-view-customers-and-factory-pages",
+      "title": "Remove excessive celebration text, titles, and use case explanations from all screens to create a cleaner, more professional UI across Dashboard, Sales, Purchases, Returns, Stock View, Customers, and Factory pages",
+      "reqIds": [
+        "REQ-36"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-dashboard-analytics-calculations-in-frontend-src-pages-dashboard-tsx-to-correctly-derive-and-aggregate-values-from-all-four-transaction-types-sales-purchases-sales-return-purchase-return-ensuring-totals-match-the-sum-of-individual-tab-data",
+      "title": "Fix Dashboard analytics calculations in frontend/src/pages/Dashboard.tsx to correctly derive and aggregate values from all four transaction types (Sales, Purchases, Sales Return, Purchase Return) ensuring totals match the sum of individual tab data",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-simplify-main-dashboard-page-layout-in-frontend-src-pages-dashboard-tsx-by-removing-duplicate-data-displays-and-ensuring-charts-and-tabs-below-show-complementary-information-rather-than-repeating-the-same-statistics",
+      "title": "Simplify main Dashboard page layout in frontend/src/pages/Dashboard.tsx by removing duplicate data displays and ensuring charts and tabs below show complementary information rather than repeating the same statistics",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-redesign-sales-and-sales-return-make-entry-pages-frontend-src-pages-sales-tsx-and-frontend-src-pages-returns-tsx-to-display-code-alphabet-groups-as-colorful-chart-tabs-instead-of-the-current-tabbed-stock-selector-interface",
+      "title": "Redesign Sales and Sales Return 'Make Entry' pages (frontend/src/pages/Sales.tsx and frontend/src/pages/Returns.tsx) to display CODE alphabet groups as colorful chart tabs instead of the current tabbed stock selector interface",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-drill-down-functionality-in-sales-and-sales-return-pages-where-clicking-a-code-chart-tab-displays-only-the-stock-rows-matching-that-specific-code-prefix-with-row-selection-confined-within-that-single-tab-view",
+      "title": "Implement drill-down functionality in Sales and Sales Return pages where clicking a CODE chart tab displays only the stock rows matching that specific CODE prefix, with row selection confined within that single tab view",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-allow-users-to-navigate-between-multiple-code-chart-tabs-accumulate-row-selections-from-each-tab-then-return-to-the-chart-tab-overview-screen-where-a-record-entry-button-finalizes-all-selected-rows-as-a-single-batch-transaction-for-sales-or-sales-return",
+      "title": "Allow users to navigate between multiple CODE chart tabs, accumulate row selections from each tab, then return to the chart tab overview screen where a 'Record Entry' button finalizes all selected rows as a single batch transaction for Sales or Sales Return",
+      "reqIds": [
+        "REQ-41"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-stock-filtering-logic-in-sales-purchases-sales-return-and-purchase-return-pages-to-display-only-current-live-stock-that-reflects-the-state-after-the-most-recent-transaction-ensuring-items-already-assigned-to-customers-or-removed-from-inventory-are-excluded-from-selection",
+      "title": "Update stock filtering logic in Sales, Purchases, Sales Return, and Purchase Return pages to display only current live stock that reflects the state after the most recent transaction, ensuring items already assigned to customers or removed from inventory are excluded from selection",
+      "reqIds": [
+        "REQ-42"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-optimize-transaction-recording-performance-in-backend-main-mo-and-frontend-transaction-pages-to-ensure-multi-row-batch-entries-across-sales-purchases-sales-return-and-purchase-return-are-processed-quickly-and-instantly-without-delays",
+      "title": "Optimize transaction recording performance in backend/main.mo and frontend transaction pages to ensure multi-row batch entries across Sales, Purchases, Sales Return, and Purchase Return are processed quickly and instantly without delays",
+      "reqIds": [
+        "REQ-44"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Dashboard with analytics for stock management",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Sales section with Excel upload and jewellery scanner string parsing",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Purchases section with Excel upload and jewellery scanner string parsing",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Returns section with Excel upload and jewellery scanner string parsing",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Unified stock view with real-time updates from transactions",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Parse and validate jewellery scanner strings (GW, SW, NW, PCS, CODE)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Implement backend data models for jewellery items with fields for CODE, GW (Gross Weight), SW (Stone Weight), NW (Net Weight), and PCS (Pieces), and transaction records for sales, purchases, and returns",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Redesign main page with simplified tab navigation for one-touch workflow",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "Split Returns into two types: Purchase Return and Sales Return",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "Add submit button at top after Excel upload to store and save transaction data",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-18",
+      "summary": "Provide inline edit and delete options for rows with MISTAKE or INVALID status",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "Add manual data entry option alongside Excel upload in all transaction tabs",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "Display total stock prominently on dashboard with real-time updates from all transactions",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-21",
+      "summary": "Implement sorting by design code (default) and allow sorting by all Excel column headers",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-22",
+      "summary": "Add two sub-tabs under Sales/Purchases/Returns: 'Make Entry' and 'View Totals'",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-23",
+      "summary": "In 'Make Entry' tab, display current stock grouped by alphabetic code prefix with search and multi-select capability",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-24",
+      "summary": "Allow row selection (highlight) and batch entry recording across code-prefix tabs in 'Make Entry'",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-25",
+      "summary": "Request customer name (optional) before making Sales or Sales Return entries",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-26",
+      "summary": "Create Customer tab to view stock history ledger per customer with data analysis",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Implement stock flow logic: Sales removes from stock and assigns to customer; Purchases add to stock from Zyra Master Production; Sales Return returns stock to total; Purchase Return goes to Zyra Master Production",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "Create Factory tab below Customer to show all entries related to Zyra Master Production in ledger format with date-wise records",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-29",
+      "summary": "In 'View Totals' tab, display current day totals and overall period totals by design category with data analysis",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-43",
+      "summary": "Implement backend logic in backend/main.mo to handle stock flow: Sales transactions remove items from total stock and assign them to a customer; Purchase transactions add items to total stock from Zyra Master Production; Sales Return transactions return items to total stock; Purchase Return transactions send items back to Zyra Master Production",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-44",
+      "summary": "Create a Customer data model in backend/main.mo with fields for customer name, transaction history (sales and sales returns), and current stock holdings, with CRUD operations",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-46",
+      "summary": "Update backend/main.mo to store transaction metadata including timestamp, customer name (for Sales/Sales Return), and source/destination (Zyra Master Production for Purchases/Purchase Returns), and provide query functions to retrieve ledger data for Customers and Factory",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-47",
+      "summary": "Remove excessive celebration text and title explanations from each screen to simplify the UI",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-48",
+      "summary": "Ensure Dashboard values correctly derive and aggregate totals from all four transaction tabs (Sales, Purchase, Sales Return, Purchase Return)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-49",
+      "summary": "Simplify main page layout and avoid repeating the same data in both charts and tabs below",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-50",
+      "summary": "In Sales and Sales Return pages, display CODE alphabet groups as colorful chart tabs; clicking a tab shows relevant stock rows for that code; row selection is confined within each tab until the user navigates back to the chart tab overview",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-51",
+      "summary": "Allow users to open multiple CODE chart tabs, select rows within each, then return to the chart tab overview where a 'Record Entry' button finalizes the total sales or sales return transaction",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-52",
+      "summary": "Ensure order lines under Sales/Purchase/Sales Return/Purchase Return reflect current live stock, updating immediately after each entry is recorded; once a product is assigned to a customer via sale, it is removed from available stock for subsequent selections",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-53",
+      "summary": "Optimize recording of multiple rows across all four transaction tabs to be quick and instant, minimizing processing time for batch entries",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-61",
+      "summary": "Implement real-time inventory state management in backend/main.mo that updates the current stock immediately after each transaction is recorded, ensuring Sales moves items to customer holdings, Purchases add to total stock, Sales Return restores to total stock, and Purchase Return removes from total stock",
+      "reqIds": [
+        "REQ-43"
+      ],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Jewellery Stock Manager",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}
