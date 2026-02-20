@@ -3,154 +3,238 @@ import { ItemType } from '../backend';
 import ExcelUploader from '../components/ExcelUploader';
 import TransactionPreview from '../components/TransactionPreview';
 import ManualEntryForm from '../components/ManualEntryForm';
-import CodeChartTabs from '../components/CodeChartTabs';
 import TransactionTotalsView from '../components/TransactionTotalsView';
+import BarcodeScanner from '../components/BarcodeScanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RotateCcw, PackageX, ShoppingBag } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { RotateCcw, FileSpreadsheet, Edit, ScanLine } from 'lucide-react';
 import type { ParsedItem } from '../utils/scannerParser';
+import { parseScannerString } from '../utils/scannerParser';
+import { toast } from 'sonner';
 
 export default function Returns() {
-  const [purchaseReturnItems, setPurchaseReturnItems] = useState<ParsedItem[]>([]);
-  const [salesReturnItems, setSalesReturnItems] = useState<ParsedItem[]>([]);
+  const [returnType, setReturnType] = useState<'sales' | 'purchase'>('sales');
+  const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
+  const [uploadMode, setUploadMode] = useState<'excel' | 'manual' | 'barcode' | null>(null);
 
-  const handlePurchaseReturnManualEntry = (item: ParsedItem) => {
-    setPurchaseReturnItems((prev) => [...prev, item]);
+  const handleManualEntry = (item: ParsedItem) => {
+    setParsedItems((prev) => [...prev, item]);
   };
 
-  const handleSalesReturnManualEntry = (item: ParsedItem) => {
-    setSalesReturnItems((prev) => [...prev, item]);
+  const handleBarcodeScan = (data: string) => {
+    try {
+      const parsed = parseScannerString(data);
+      if (parsed.status === 'VALID') {
+        setParsedItems((prev) => [...prev, parsed]);
+        toast.success('Barcode scanned successfully!');
+        setUploadMode(null);
+      } else if (parsed.status === 'MISTAKE') {
+        toast.warning('Barcode scanned with warnings. Please verify the data.');
+        setParsedItems((prev) => [...prev, parsed]);
+        setUploadMode(null);
+      } else {
+        toast.error('Invalid barcode data. Please try again.');
+      }
+    } catch (error) {
+      toast.error('Failed to parse barcode data.');
+    }
   };
 
-  const handleSalesReturnStockSelection = (items: ParsedItem[]) => {
-    setSalesReturnItems(items);
+  const handleReturnTypeChange = (value: string) => {
+    setReturnType(value as 'sales' | 'purchase');
+    setParsedItems([]);
+    setUploadMode(null);
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <RotateCcw className="h-8 w-8 text-orange-600" />
+    <div className="space-y-8 pb-8">
+      <div className="sticky top-16 z-40 bg-background pb-6 border-b">
+        <h2 className="text-4xl font-bold tracking-tight flex items-center gap-3 font-display">
+          <RotateCcw className="h-10 w-10 text-warning" />
           Returns
         </h2>
       </div>
 
-      {/* Purchase Return Section */}
-      <Card className="border-2 border-purple-200 dark:border-purple-900">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PackageX className="h-5 w-5 text-purple-600" />
-            Purchase Return
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Top-level Return Type Tabs */}
+      <Tabs value={returnType} onValueChange={handleReturnTypeChange} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2 h-12 rounded-xl shadow-soft">
+          <TabsTrigger value="sales" className="text-base rounded-lg">Sales Return</TabsTrigger>
+          <TabsTrigger value="purchase" className="text-base rounded-lg">Purchase Return</TabsTrigger>
+        </TabsList>
+
+        {/* Sales Return Tab */}
+        <TabsContent value="sales" className="space-y-8 mt-8">
           <Tabs defaultValue="make-entry" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="make-entry">Make Entry</TabsTrigger>
-              <TabsTrigger value="view-totals">View Totals</TabsTrigger>
+            <TabsList className="grid w-full max-w-md grid-cols-2 h-12 rounded-xl shadow-soft">
+              <TabsTrigger value="make-entry" className="text-base rounded-lg">Make Entry</TabsTrigger>
+              <TabsTrigger value="view-totals" className="text-base rounded-lg">View Totals</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="make-entry" className="space-y-6 mt-6">
-              {/* Excel Upload */}
-              <Card>
+            <TabsContent value="make-entry" className="space-y-8 mt-8">
+              {/* Upload Options */}
+              <Card className="shadow-medium">
                 <CardHeader>
-                  <CardTitle>Upload Purchase Return Data</CardTitle>
+                  <CardTitle className="text-xl font-display">Add Sales Return Items</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <ExcelUploader onDataParsed={setPurchaseReturnItems} />
-                </CardContent>
-              </Card>
+                <CardContent className="space-y-6">
+                  {!uploadMode && (
+                    <div className="grid grid-cols-3 gap-4">
+                      <Button
+                        onClick={() => setUploadMode('excel')}
+                        variant="outline"
+                        className="h-24 flex-col gap-3 shadow-soft hover:shadow-medium transition-all duration-200"
+                      >
+                        <FileSpreadsheet className="h-8 w-8 text-success" />
+                        <span className="text-sm font-medium">Excel Upload</span>
+                      </Button>
+                      <Button
+                        onClick={() => setUploadMode('manual')}
+                        variant="outline"
+                        className="h-24 flex-col gap-3 shadow-soft hover:shadow-medium transition-all duration-200"
+                      >
+                        <Edit className="h-8 w-8 text-primary" />
+                        <span className="text-sm font-medium">Manual Entry</span>
+                      </Button>
+                      <Button
+                        onClick={() => setUploadMode('barcode')}
+                        variant="outline"
+                        className="h-24 flex-col gap-3 shadow-soft hover:shadow-medium transition-all duration-200"
+                      >
+                        <ScanLine className="h-8 w-8 text-secondary" />
+                        <span className="text-sm font-medium">Scan Barcode</span>
+                      </Button>
+                    </div>
+                  )}
 
-              {/* Manual Entry */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Manual Entry</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ManualEntryForm onEntryAdded={handlePurchaseReturnManualEntry} />
+                  {uploadMode === 'excel' && (
+                    <div className="space-y-4">
+                      <ExcelUploader onDataParsed={setParsedItems} />
+                      <Button variant="outline" onClick={() => setUploadMode(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                  {uploadMode === 'manual' && (
+                    <div className="space-y-4">
+                      <ManualEntryForm onEntryAdded={handleManualEntry} />
+                      <Button variant="outline" onClick={() => setUploadMode(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                  {uploadMode === 'barcode' && (
+                    <BarcodeScanner
+                      onScanSuccess={handleBarcodeScan}
+                      onClose={() => setUploadMode(null)}
+                    />
+                  )}
                 </CardContent>
               </Card>
 
               {/* Transaction Preview */}
-              {purchaseReturnItems.length > 0 && (
+              {parsedItems.length > 0 && (
                 <TransactionPreview
-                  items={purchaseReturnItems}
+                  items={parsedItems}
                   transactionType={ItemType.returned}
-                  onComplete={() => setPurchaseReturnItems([])}
-                  onItemsChange={setPurchaseReturnItems}
-                  isPurchaseReturn={true}
+                  onComplete={() => setParsedItems([])}
+                  onItemsChange={setParsedItems}
                 />
               )}
             </TabsContent>
 
-            <TabsContent value="view-totals" className="mt-6">
-              <TransactionTotalsView transactionType={ItemType.returned} isPurchaseReturn={true} />
+            <TabsContent value="view-totals" className="mt-8">
+              <TransactionTotalsView transactionType={ItemType.returned} filterLabel="Sales Returns" />
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
+        </TabsContent>
 
-      {/* Sales Return Section */}
-      <Card className="border-2 border-green-200 dark:border-green-900">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-green-600" />
-            Sales Return
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Purchase Return Tab */}
+        <TabsContent value="purchase" className="space-y-8 mt-8">
           <Tabs defaultValue="make-entry" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="make-entry">Make Entry</TabsTrigger>
-              <TabsTrigger value="view-totals">View Totals</TabsTrigger>
+            <TabsList className="grid w-full max-w-md grid-cols-2 h-12 rounded-xl shadow-soft">
+              <TabsTrigger value="make-entry" className="text-base rounded-lg">Make Entry</TabsTrigger>
+              <TabsTrigger value="view-totals" className="text-base rounded-lg">View Totals</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="make-entry" className="space-y-6 mt-6">
-              {/* CODE Chart Tabs for Stock Selection */}
-              <CodeChartTabs
-                transactionType={ItemType.returned}
-                onSelectionComplete={handleSalesReturnStockSelection}
-                isSalesReturn={true}
-              />
-
-              {/* Excel Upload */}
-              <Card>
+            <TabsContent value="make-entry" className="space-y-8 mt-8">
+              {/* Upload Options */}
+              <Card className="shadow-medium">
                 <CardHeader>
-                  <CardTitle>Upload Sales Return Data</CardTitle>
+                  <CardTitle className="text-xl font-display">Add Purchase Return Items</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <ExcelUploader onDataParsed={setSalesReturnItems} />
-                </CardContent>
-              </Card>
+                <CardContent className="space-y-6">
+                  {!uploadMode && (
+                    <div className="grid grid-cols-3 gap-4">
+                      <Button
+                        onClick={() => setUploadMode('excel')}
+                        variant="outline"
+                        className="h-24 flex-col gap-3 shadow-soft hover:shadow-medium transition-all duration-200"
+                      >
+                        <FileSpreadsheet className="h-8 w-8 text-success" />
+                        <span className="text-sm font-medium">Excel Upload</span>
+                      </Button>
+                      <Button
+                        onClick={() => setUploadMode('manual')}
+                        variant="outline"
+                        className="h-24 flex-col gap-3 shadow-soft hover:shadow-medium transition-all duration-200"
+                      >
+                        <Edit className="h-8 w-8 text-primary" />
+                        <span className="text-sm font-medium">Manual Entry</span>
+                      </Button>
+                      <Button
+                        onClick={() => setUploadMode('barcode')}
+                        variant="outline"
+                        className="h-24 flex-col gap-3 shadow-soft hover:shadow-medium transition-all duration-200"
+                      >
+                        <ScanLine className="h-8 w-8 text-secondary" />
+                        <span className="text-sm font-medium">Scan Barcode</span>
+                      </Button>
+                    </div>
+                  )}
 
-              {/* Manual Entry */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Manual Entry</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ManualEntryForm onEntryAdded={handleSalesReturnManualEntry} />
+                  {uploadMode === 'excel' && (
+                    <div className="space-y-4">
+                      <ExcelUploader onDataParsed={setParsedItems} />
+                      <Button variant="outline" onClick={() => setUploadMode(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                  {uploadMode === 'manual' && (
+                    <div className="space-y-4">
+                      <ManualEntryForm onEntryAdded={handleManualEntry} />
+                      <Button variant="outline" onClick={() => setUploadMode(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                  {uploadMode === 'barcode' && (
+                    <BarcodeScanner
+                      onScanSuccess={handleBarcodeScan}
+                      onClose={() => setUploadMode(null)}
+                    />
+                  )}
                 </CardContent>
               </Card>
 
               {/* Transaction Preview */}
-              {salesReturnItems.length > 0 && (
+              {parsedItems.length > 0 && (
                 <TransactionPreview
-                  items={salesReturnItems}
+                  items={parsedItems}
                   transactionType={ItemType.returned}
-                  onComplete={() => setSalesReturnItems([])}
-                  onItemsChange={setSalesReturnItems}
-                  isSalesReturn={true}
+                  onComplete={() => setParsedItems([])}
+                  onItemsChange={setParsedItems}
                 />
               )}
             </TabsContent>
 
-            <TabsContent value="view-totals" className="mt-6">
-              <TransactionTotalsView transactionType={ItemType.returned} isSalesReturn={true} />
+            <TabsContent value="view-totals" className="mt-8">
+              <TransactionTotalsView transactionType={ItemType.returned} filterLabel="Purchase Returns" />
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

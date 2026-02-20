@@ -1,199 +1,229 @@
+import { useState, useMemo } from 'react';
 import { useTransactionsByType } from '../hooks/useQueries';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ItemType, TransactionRecord } from '../backend';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ItemType } from '../backend';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo } from 'react';
+import { format } from 'date-fns';
+import ReportDownloader from './ReportDownloader';
+import { useNavigate } from '@tanstack/react-router';
 
 interface TransactionTotalsViewProps {
   transactionType: ItemType;
-  isPurchaseReturn?: boolean;
-  isSalesReturn?: boolean;
+  filterLabel?: string;
 }
 
-export default function TransactionTotalsView({
-  transactionType,
-  isPurchaseReturn,
-  isSalesReturn,
-}: TransactionTotalsViewProps) {
+export default function TransactionTotalsView({ transactionType, filterLabel }: TransactionTotalsViewProps) {
   const { data: transactions, isLoading } = useTransactionsByType(transactionType);
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
 
-  const { todayTransactions, allTransactions, byCategory } = useMemo(() => {
-    if (!transactions) return { todayTransactions: [], allTransactions: [], byCategory: {} };
+  // Filter transactions by date range
+  const filteredTransactions = useMemo(() => {
+    if (!transactions) return [];
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayTimestamp = BigInt(today.getTime() * 1000000);
+    let filtered = transactions;
 
-    const todayTxs = transactions.filter((t) => t.timestamp >= todayTimestamp);
+    if (dateRange.from) {
+      const fromTimestamp = BigInt(dateRange.from.getTime() * 1000000);
+      filtered = filtered.filter((tx) => tx.timestamp >= fromTimestamp);
+    }
 
-    // Group by CODE prefix
-    const categories: Record<string, typeof transactions> = {};
-    transactions.forEach((t) => {
-      const match = t.item.code.match(/^([A-Z]+)/);
-      const prefix = match ? match[1] : 'OTHER';
-      if (!categories[prefix]) {
-        categories[prefix] = [];
+    if (dateRange.to) {
+      const toDate = new Date(dateRange.to);
+      toDate.setHours(23, 59, 59, 999);
+      const toTimestamp = BigInt(toDate.getTime() * 1000000);
+      filtered = filtered.filter((tx) => tx.timestamp <= toTimestamp);
+    }
+
+    return filtered;
+  }, [transactions, dateRange]);
+
+  // Group by date
+  const groupedByDate = useMemo(() => {
+    const groups: Record<string, TransactionRecord[]> = {};
+
+    filteredTransactions.forEach((tx) => {
+      const date = format(new Date(Number(tx.timestamp) / 1000000), 'yyyy-MM-dd');
+      if (!groups[date]) {
+        groups[date] = [];
       }
-      categories[prefix].push(t);
+      groups[date].push(tx);
     });
 
-    return {
-      todayTransactions: todayTxs,
-      allTransactions: transactions,
-      byCategory: categories,
-    };
-  }, [transactions]);
+    return groups;
+  }, [filteredTransactions]);
 
-  const calculateTotals = (txs: typeof transactions) => {
-    if (!txs) return { count: 0, totalGW: 0, totalNW: 0, totalPCS: 0 };
-    return {
-      count: txs.length,
-      totalGW: txs.reduce((sum, t) => sum + t.item.grossWeight, 0),
-      totalNW: txs.reduce((sum, t) => sum + t.item.netWeight, 0),
-      totalPCS: txs.reduce((sum, t) => sum + Number(t.item.pieces), 0),
-    };
+  const sortedDates = Object.keys(groupedByDate).sort().reverse();
+
+  const toggleGroup = (date: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(date)) {
+      newExpanded.delete(date);
+    } else {
+      newExpanded.add(date);
+    }
+    setExpandedGroups(newExpanded);
   };
 
-  const todayTotals = calculateTotals(todayTransactions);
-  const overallTotals = calculateTotals(allTransactions);
-
-  const getTitle = () => {
-    if (isPurchaseReturn) return 'Purchase Return Totals';
-    if (isSalesReturn) return 'Sales Return Totals';
-    switch (transactionType) {
-      case ItemType.sale:
-        return 'Sales Totals';
-      case ItemType.purchase:
-        return 'Purchase Totals';
-      case ItemType.returned:
-        return 'Return Totals';
+  const handleCustomerClick = (customerName: string | undefined) => {
+    if (customerName) {
+      navigate({ to: '/customers' });
     }
   };
 
+  const isSaleTransaction = transactionType === ItemType.sale;
+
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Today's Transactions</CardTitle>
-            <CardDescription>Transactions recorded today</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-2">
-                {[...Array(4)].map((_, i) => (
-                  <Skeleton key={i} className="h-8 w-full" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Count:</span>
-                  <span className="font-semibold">{todayTotals.count}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total GW:</span>
-                  <span className="font-semibold">{todayTotals.totalGW.toFixed(3)}g</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total NW:</span>
-                  <span className="font-semibold">{todayTotals.totalNW.toFixed(3)}g</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total PCS:</span>
-                  <span className="font-semibold">{todayTotals.totalPCS}</span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Overall Period</CardTitle>
-            <CardDescription>All time transactions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-2">
-                {[...Array(4)].map((_, i) => (
-                  <Skeleton key={i} className="h-8 w-full" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Count:</span>
-                  <span className="font-semibold">{overallTotals.count}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total GW:</span>
-                  <span className="font-semibold">{overallTotals.totalGW.toFixed(3)}g</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total NW:</span>
-                  <span className="font-semibold">{overallTotals.totalNW.toFixed(3)}g</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total PCS:</span>
-                  <span className="font-semibold">{overallTotals.totalPCS}</span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* By Category */}
-      <Card>
+      {/* Date Filter and Download */}
+      <Card className="shadow-medium">
         <CardHeader>
-          <CardTitle>By Design Category</CardTitle>
-          <CardDescription>Transactions grouped by CODE prefix</CardDescription>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <CardTitle className="text-xl font-display">
+              {filterLabel || `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} Transactions`}
+            </CardTitle>
+            <div className="flex flex-wrap items-center gap-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 shadow-soft">
+                    <CalendarIcon className="h-4 w-4" />
+                    {dateRange.from ? format(dateRange.from, 'PP') : 'From'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.from}
+                    onSelect={(date) => setDateRange({ ...dateRange, from: date })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 shadow-soft">
+                    <CalendarIcon className="h-4 w-4" />
+                    {dateRange.to ? format(dateRange.to, 'PP') : 'To'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.to}
+                    onSelect={(date) => setDateRange({ ...dateRange, to: date })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {(dateRange.from || dateRange.to) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDateRange({ from: undefined, to: undefined })}
+                >
+                  Clear
+                </Button>
+              )}
+              <ReportDownloader 
+                data={filteredTransactions}
+                filename={`${transactionType}-report`}
+                title={`${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} Report`}
+              />
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : Object.keys(byCategory).length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No transactions yet</p>
-          ) : (
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Count</TableHead>
-                    <TableHead className="text-right">Total GW (g)</TableHead>
-                    <TableHead className="text-right">Total NW (g)</TableHead>
-                    <TableHead className="text-right">Total PCS</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(byCategory)
-                    .sort(([a], [b]) => a.localeCompare(b))
-                    .map(([category, txs]) => {
-                      const totals = calculateTotals(txs);
-                      return (
-                        <TableRow key={category}>
-                          <TableCell className="font-medium">{category}</TableCell>
-                          <TableCell className="text-right">{totals.count}</TableCell>
-                          <TableCell className="text-right">{totals.totalGW.toFixed(3)}</TableCell>
-                          <TableCell className="text-right">{totals.totalNW.toFixed(3)}</TableCell>
-                          <TableCell className="text-right">{totals.totalPCS}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
       </Card>
+
+      {/* Transactions List */}
+      {isLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-24 w-full rounded-xl" />
+        </div>
+      ) : sortedDates.length === 0 ? (
+        <Card className="shadow-soft">
+          <CardContent className="py-12">
+            <p className="text-center text-muted-foreground">No transactions found</p>
+          </CardContent>
+        </Card>
+      ) : (
+        sortedDates.map((date) => {
+          const dayTransactions = groupedByDate[date];
+          const isExpanded = expandedGroups.has(date);
+          const totalGW = dayTransactions.reduce((sum, tx) => sum + tx.item.grossWeight, 0);
+          const totalPCS = dayTransactions.reduce((sum, tx) => sum + Number(tx.item.pieces), 0);
+
+          return (
+            <Card 
+              key={date} 
+              className={`shadow-soft hover:shadow-medium transition-all duration-200 ${
+                isSaleTransaction ? 'border-l-4 border-l-success' : ''
+              }`}
+            >
+              <CardHeader
+                className="cursor-pointer hover:bg-muted/30 transition-colors duration-200 rounded-t-xl"
+                onClick={() => toggleGroup(date)}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-display">{format(new Date(date), 'PPP')}</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {dayTransactions.length} transactions • {totalGW.toFixed(2)}g • {totalPCS} pcs
+                    </p>
+                  </div>
+                  {isExpanded ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+              </CardHeader>
+              {isExpanded && (
+                <CardContent className="pt-0">
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="font-semibold">Time</TableHead>
+                          <TableHead className="font-semibold">CODE</TableHead>
+                          <TableHead className="text-right font-semibold">GW (g)</TableHead>
+                          <TableHead className="text-right font-semibold">SW (g)</TableHead>
+                          <TableHead className="text-right font-semibold">NW (g)</TableHead>
+                          <TableHead className="text-right font-semibold">PCS</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dayTransactions.map((tx) => (
+                          <TableRow 
+                            key={Number(tx.id)}
+                            className="hover:bg-muted/30 transition-colors duration-200"
+                          >
+                            <TableCell>{format(new Date(Number(tx.timestamp) / 1000000), 'p')}</TableCell>
+                            <TableCell className="font-mono font-medium">{tx.item.code}</TableCell>
+                            <TableCell className="text-right">{tx.item.grossWeight.toFixed(3)}</TableCell>
+                            <TableCell className="text-right">{tx.item.stoneWeight.toFixed(3)}</TableCell>
+                            <TableCell className="text-right">{tx.item.netWeight.toFixed(3)}</TableCell>
+                            <TableCell className="text-right">{Number(tx.item.pieces)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          );
+        })
+      )}
     </div>
   );
 }

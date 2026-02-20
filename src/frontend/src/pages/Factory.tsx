@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Factory as FactoryIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
 export default function Factory() {
   const { data: transactions, isLoading } = useFactoryLedger();
@@ -18,8 +19,8 @@ export default function Factory() {
     : { count: 0, totalGW: 0, totalNW: 0, totalPCS: 0 };
 
   return (
-    <div className="space-y-8">
-      <div>
+    <div className="space-y-6">
+      <div className="sticky top-16 z-40 bg-background pb-4 border-b">
         <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <FactoryIcon className="h-8 w-8 text-indigo-600" />
           Factory
@@ -27,7 +28,7 @@ export default function Factory() {
       </div>
 
       {/* Summary */}
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Transactions</CardTitle>
@@ -98,7 +99,7 @@ export default function Factory() {
                     transactions.map((transaction) => (
                       <TableRow key={Number(transaction.id)}>
                         <TableCell>
-                          {new Date(Number(transaction.timestamp) / 1000000).toLocaleDateString()}
+                          {format(new Date(Number(transaction.timestamp) / 1000000), 'PPp')}
                         </TableCell>
                         <TableCell>
                           <Badge variant={transaction.transactionType === 'purchase' ? 'default' : 'outline'}>

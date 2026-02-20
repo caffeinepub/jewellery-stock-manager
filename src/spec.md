@@ -1,17 +1,22 @@
 # Specification
 
 ## Summary
-**Goal:** Simplify UI across all screens, fix Dashboard calculations to correctly aggregate transaction data, and redesign Sales/Returns with CODE chart tabs for filtered stock selection.
+**Goal:** Fix stock synchronization issues, improve mobile UX, add report downloads, and modernize UI design with a bold color theme.
 
 **Planned changes:**
-- Remove excessive celebration text, titles, and use case explanations from all screens (Dashboard, Sales, Purchases, Returns, Stock View, Customers, Factory)
-- Fix Dashboard analytics to correctly derive and aggregate totals from all four transaction types (Sales, Purchases, Sales Return, Purchase Return)
-- Simplify main Dashboard layout to avoid repeating data between summary cards and charts/tabs
-- Replace current stock selector in Sales and Sales Return pages with colorful CODE chart tabs (e.g., NKST, CTNKST)
-- Implement drill-down functionality where clicking a CODE chart tab filters stock to show only matching rows
-- Allow users to select rows from multiple CODE tabs, accumulate selections, and record all as a single batch transaction
-- Update stock filtering logic to display only current live stock that reflects the state after the most recent transaction
-- Implement real-time inventory state management in backend so Sales moves items to customers, Purchases add to stock, Sales Return restores to stock, and Purchase Return removes from stock
-- Optimize transaction recording performance to ensure multi-row batch entries process quickly and instantly
+- Fix Dashboard current stock calculation to match Stock View page using same backend data source
+- Update Stock View to fetch only live unsold items with real-time synchronization
+- Remove unnecessary 'Sales' and 'Purchase' badge labels from stock items
+- Add click-to-navigate from Dashboard Current Stock to Stock Tab
+- Add action buttons in Stock View for recording Sales, Sales Return, Purchase Return transactions
+- Fix Customer page filtering to show sales, returns, total gross weight, and pieces sold
+- Highlight completed sales transactions and make customer names clickable links
+- Resize CODE prefix tabs in Sales page to fit all four on iPhone screen without scrolling
+- Move Upload option above CODE prefix tabs as shared entry point
+- Implement persistent camera permission handling for barcode scanner (ask once per session)
+- Add report download functionality (PDF and Excel) to Sales, Purchases, Sales Return, Purchase Return, and Stock View pages
+- Enable row selection by clicking anywhere on row (not just checkbox) with visual highlighting
+- Redesign color theme with bold, modern palette (clean lines, playful accents, high contrast, avoiding blue/purple)
+- Apply modern mobile-optimized UI styling with spacious cards, clear typography, subtle gradients/shadows, smooth transitions, contemporary icons, and generous whitespace
 
-**User-visible outcome:** Users see a cleaner, more professional UI without repetitive text. Dashboard totals now correctly reflect all transaction types. Sales and Returns pages feature intuitive CODE chart tabs for browsing and selecting stock, with live inventory filtering that ensures only currently available items appear after each transaction. Batch recording of multiple items is fast and instant.
+**User-visible outcome:** Stock data is accurately synchronized across Dashboard and Stock View, mobile experience is optimized with easier navigation and selection, reports can be downloaded in PDF/Excel formats, and the entire application has a fresh, modern, mobile-first design with a vibrant color theme.

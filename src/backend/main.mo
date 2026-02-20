@@ -1,16 +1,18 @@
-import Map "mo:core/Map";
-import Nat "mo:core/Nat";
 import Float "mo:core/Float";
 import Text "mo:core/Text";
 import Array "mo:core/Array";
-import Order "mo:core/Order";
+import Map "mo:core/Map";
+import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
+import Order "mo:core/Order";
+import Time "mo:core/Time";
 import MixinStorage "blob-storage/Mixin";
-import Migration "migration";
+import Analytics "analytics";
 
-(with migration = Migration.run)
 actor {
   include MixinStorage();
+
+  // Type Definitions
 
   type JewelleryItem = {
     code : Text;
@@ -35,6 +37,26 @@ actor {
     timestamp : Int;
   };
 
+  type Customer = {
+    name : Text;
+    transactionHistory : [TransactionRecord];
+    currentHoldings : [JewelleryItem];
+  };
+
+  // New TransactionInput type for succinct data representation
+  type TransactionInput = {
+    code : Text;
+    transactionType : ItemType;
+    timestamp : Int;
+  };
+
+  var nextTransactionId = 1;
+
+  // Persistent Store
+  let items = Map.empty<Text, JewelleryItem>();
+  let transactions = Map.empty<Nat, TransactionRecord>();
+  let customers = Map.empty<Text, Customer>();
+
   type AnalyticsData = {
     totalInventoryValue : Float;
     numberOfPieces : Nat;
@@ -42,18 +64,6 @@ actor {
     purchaseCount : Nat;
     returnCount : Nat;
   };
-
-  type Customer = {
-    name : Text;
-    transactionHistory : [TransactionRecord];
-    currentHoldings : [JewelleryItem];
-  };
-
-  var nextTransactionId = 1;
-
-  let items = Map.empty<Text, JewelleryItem>();
-  let transactions = Map.empty<Nat, TransactionRecord>();
-  let customers = Map.empty<Text, Customer>();
 
   module JewelleryItem {
     public func compare(a : JewelleryItem, b : JewelleryItem) : Order.Order {
@@ -64,6 +74,12 @@ actor {
   module TransactionRecord {
     public func compare(a : TransactionRecord, b : TransactionRecord) : Order.Order {
       Nat.compare(a.id, b.id);
+    };
+  };
+
+  module Customer {
+    public func compare(a : Customer, b : Customer) : Order.Order {
+      Text.compare(a.name, b.name);
     };
   };
 
@@ -86,6 +102,21 @@ actor {
     };
 
     items.add(code, item);
+  };
+
+  public shared ({ caller }) func addBatchItems(itemsArray : [(Text, Float, Float, Float, Nat, ItemType)]) : async () {
+    for ((code, grossWeight, stoneWeight, netWeight, pieces, itemType) in itemsArray.values()) {
+      let item : JewelleryItem = {
+        code;
+        grossWeight;
+        stoneWeight;
+        netWeight;
+        pieces;
+        itemType;
+        isSold = false;
+      };
+      items.add(code, item);
+    };
   };
 
   public shared ({ caller }) func addTransaction(
@@ -121,17 +152,26 @@ actor {
     };
   };
 
+  public shared ({ caller }) func addBatchTransactions(transactionsArray : [TransactionInput]) : async [Text] {
+    var results : [Text] = [];
+    for (transaction in transactionsArray.values()) {
+      let result = await addTransaction(transaction.code, transaction.transactionType, transaction.timestamp);
+      results := results.concat([result]);
+    };
+    results;
+  };
+
   public query ({ caller }) func getAllItems() : async [JewelleryItem] {
     items.values().toArray().sort();
   };
 
   public query ({ caller }) func getAvailableItemsByType(itemType : ItemType) : async [JewelleryItem] {
-    let iter = items.values().toArray().filter(
+    let filteredArray = items.values().toArray().filter(
       func(item) {
-        item.itemType == itemType and not item.isSold
+        item.itemType == itemType and not item.isSold;
       }
     );
-    iter.sort();
+    filteredArray.sort();
   };
 
   public query ({ caller }) func getItem(code : Text) : async ?JewelleryItem {
@@ -155,33 +195,9 @@ actor {
     transactions.get(id);
   };
 
+  // Cross-Module Analytics Call
   public query ({ caller }) func getAnalyticsData() : async AnalyticsData {
-    var totalInventoryValue : Float = 0.0;
-    var numberOfPieces = 0;
-    var salesCount = 0;
-    var purchaseCount = 0;
-    var returnCount = 0;
-
-    for (item in items.values()) {
-      if (not item.isSold) {
-        totalInventoryValue += item.netWeight;
-        numberOfPieces += item.pieces;
-
-        switch (item.itemType) {
-          case (#sale) { salesCount += 1 };
-          case (#purchase) { purchaseCount += 1 };
-          case (#returned) { returnCount += 1 };
-        };
-      };
-    };
-
-    {
-      totalInventoryValue;
-      numberOfPieces;
-      salesCount;
-      purchaseCount;
-      returnCount;
-    };
+    Analytics.calculateAnalytics(items, customers);
   };
 
   public shared ({ caller }) func createCustomer(name : Text) : async () {
@@ -215,14 +231,7 @@ actor {
     customers.remove(name);
   };
 
-  public shared ({ caller }) func addBatchTransactions(
-    transactionsArray : [(Text, ItemType, Int)]
-  ) : async [Text] {
-    var results : [Text] = [];
-    for ((code, transactionType, timestamp) in transactionsArray.values()) {
-      let result = await addTransaction(code, transactionType, timestamp);
-      results := results.concat([result]);
-    };
-    results;
+  public query ({ caller }) func getAllCustomers() : async [Customer] {
+    customers.values().toArray().sort();
   };
 };

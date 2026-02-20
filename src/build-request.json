@@ -1,194 +1,298 @@
 {
   "kind": "build_request",
-  "title": "Simplify UI, fix Dashboard totals, redesign Sales/Returns with CODE chart tabs and live stock filtering",
+  "title": "Fix stock synchronization, improve mobile UX, add report downloads, and modernize UI design",
   "projectName": "Jewellery Stock Manager",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-36",
-      "text": "Remove excessive celebration text, titles, and use case explanations from all screens to create a cleaner, more professional UI across Dashboard, Sales, Purchases, Returns, Stock View, Customers, and Factory pages",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ],
-        "quotes": [
-          "Don't want too much celebration in each screen about the title and its use case"
-        ]
-      },
-      "acceptanceCriteria": [
-        "All page headers use concise titles without lengthy explanations",
-        "No redundant descriptive text about what each section does",
-        "UI focuses on data and actions rather than instructional content"
-      ]
-    },
-    {
-      "id": "REQ-37",
-      "text": "Fix Dashboard analytics calculations in frontend/src/pages/Dashboard.tsx to correctly derive and aggregate values from all four transaction types (Sales, Purchases, Sales Return, Purchase Return) ensuring totals match the sum of individual tab data",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ],
-        "quotes": [
-          "Dashboard vales don't derive values for each of other 4 tabs of s/p/sr/pr"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Dashboard total stock equals current inventory after all transactions",
-        "Transaction counts match the sum of Sales + Purchases + Sales Return + Purchase Return",
-        "Weight totals (GW, NW, SW) aggregate correctly across all transaction types",
-        "Dashboard values update in real-time when new transactions are recorded"
-      ]
-    },
-    {
-      "id": "REQ-38",
-      "text": "Simplify main Dashboard page layout in frontend/src/pages/Dashboard.tsx by removing duplicate data displays and ensuring charts and tabs below show complementary information rather than repeating the same statistics",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ],
-        "quotes": [
-          "On main page make it easy, and don't repeat the same data displayed in charts and tabs below"
-        ]
-      },
-      "acceptanceCriteria": [
-        "No statistics are displayed in both summary cards and chart sections",
-        "Layout presents overview metrics at the top with detailed breakdowns below",
-        "User can understand the full picture without seeing the same numbers twice"
-      ]
-    },
-    {
-      "id": "REQ-39",
-      "text": "Redesign Sales and Sales Return 'Make Entry' pages (frontend/src/pages/Sales.tsx and frontend/src/pages/Returns.tsx) to display CODE alphabet groups as colorful chart tabs instead of the current tabbed stock selector interface",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ],
-        "quotes": [
-          "The data filtered as per code alphabet names should be in chart tabs which are colorful"
-        ]
-      },
-      "acceptanceCriteria": [
-        "CODE prefix groups (e.g., NKST, CTNKST) render as visual chart-style tabs with distinct colors",
-        "Each chart tab is clickable and visually distinct",
-        "Current stock selector component is replaced with this chart tab interface"
-      ]
-    },
-    {
-      "id": "REQ-40",
-      "text": "Implement drill-down functionality in Sales and Sales Return pages where clicking a CODE chart tab displays only the stock rows matching that specific CODE prefix, with row selection confined within that single tab view",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ],
-        "quotes": [
-          "relevant data about the rows matching the code should be displayed when hit on such codes chart tab. Selecting of rows should happen once inside the tab, and it should be confined before moving back to various code chart tab"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Clicking a CODE chart tab navigates to a filtered view showing only matching stock items",
-        "Users can select multiple rows within the filtered view",
-        "Selections are isolated per CODE tab and do not carry over when switching tabs",
-        "A back or return action brings the user to the chart tab overview"
-      ]
-    },
-    {
-      "id": "REQ-41",
-      "text": "Allow users to navigate between multiple CODE chart tabs, accumulate row selections from each tab, then return to the chart tab overview screen where a 'Record Entry' button finalizes all selected rows as a single batch transaction for Sales or Sales Return",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ],
-        "quotes": [
-          "The user can still open another chart tab and select more rows and then finally when back to chart tab screen should have an option to record the total sales or sales return"
-        ]
-      },
-      "acceptanceCriteria": [
-        "User can visit multiple CODE tabs sequentially and select rows in each",
-        "All selections across tabs are aggregated and preserved",
-        "Chart tab overview displays a 'Record Entry' button when selections exist",
-        "Clicking 'Record Entry' submits all selected items as a single transaction"
-      ]
-    },
-    {
-      "id": "REQ-42",
-      "text": "Update stock filtering logic in Sales, Purchases, Sales Return, and Purchase Return pages to display only current live stock that reflects the state after the most recent transaction, ensuring items already assigned to customers or removed from inventory are excluded from selection",
+      "id": "REQ-57",
+      "text": "Fix Dashboard current stock calculation to accurately match Stock View page by ensuring both locations use the same data source and calculation logic (Total Purchases - Total Sales + Total Sales Return - Total Purchase Return) from backend analytics",
       "target": "both",
       "source": {
         "messageIds": [
-          "msg-latest"
+          "msg-last"
         ],
         "quotes": [
-          "These order lines under each sales/purchase/sales return and purchase return should be about the current live stock which takes affect after one entry is made. Suppose one sale entry is made for a client then that product rows moves to customer and the next selection rows the rows previously selected for customers get removed"
+          "Current stock shown on the dashboard is not matching with the actual stock when you open the stock tab",
+          "Live data shows correct stock, but the stock tab still shows old/partial data (around 50 items)"
         ]
       },
       "acceptanceCriteria": [
-        "Stock selector in each transaction page queries current inventory state from backend",
-        "Items sold to a customer are immediately removed from available stock",
-        "Purchase entries add new items to available stock instantly",
-        "Sales Return entries restore items to available stock",
-        "Purchase Return entries remove items from available stock"
+        "Dashboard Current Stock displays the same item count and gross weight as Stock View page",
+        "Both Dashboard and Stock View use the same backend query for live stock data",
+        "Stock calculations reflect all four transaction types: Purchases, Sales, Sales Return, Purchase Return"
       ]
     },
     {
-      "id": "REQ-43",
-      "text": "Implement real-time inventory state management in backend/main.mo that updates the current stock immediately after each transaction is recorded, ensuring Sales moves items to customer holdings, Purchases add to total stock, Sales Return restores to total stock, and Purchase Return removes from total stock",
-      "target": "backend",
+      "id": "REQ-58",
+      "text": "Update Stock View page in frontend/src/pages/StockView.tsx to fetch and display only live unsold items from backend, ensuring real-time synchronization with all transaction recordings",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-latest"
+          "msg-last"
         ],
         "quotes": [
-          "These order lines under each sales/purchase/sales return and purchase return should be about the current live stock which takes affect after one entry is made"
+          "the stock tab still shows old/partial data (around 50 items)",
+          "The stock tab should reflect real-time quantities, not outdated or partial information"
         ]
       },
       "acceptanceCriteria": [
-        "Backend maintains a live current stock collection separate from transaction history",
-        "Sale transactions decrement items from current stock and assign to customer",
-        "Purchase transactions increment current stock",
-        "Sales Return transactions increment current stock",
-        "Purchase Return transactions decrement current stock",
-        "Query functions return only currently available inventory for selection"
+        "Stock View displays all current unsold items without pagination issues",
+        "Stock list updates immediately after any transaction is recorded",
+        "No stale or cached data is shown; always reflects latest backend state"
       ]
     },
     {
-      "id": "REQ-44",
-      "text": "Optimize transaction recording performance in backend/main.mo and frontend transaction pages to ensure multi-row batch entries across Sales, Purchases, Sales Return, and Purchase Return are processed quickly and instantly without delays",
-      "target": "both",
+      "id": "REQ-59",
+      "text": "Remove 'Sales' and 'Purchase' badge labels from stock items displayed in Stock View page (frontend/src/pages/StockView.tsx) and other stock listing components",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-latest"
+          "msg-last"
         ],
         "quotes": [
-          "Recording entries of multiple row in each of sales/purchase/sales return and purchase return should be quick and instant and time consuming"
+          "Stock items are showing 'Sales' and 'Purchase' labels on the side, which is unnecessary after stock is updated"
         ]
       },
       "acceptanceCriteria": [
-        "Batch submission of multiple rows completes in under 2 seconds",
-        "No loading spinners for more than 2 seconds during submission",
-        "Backend processes batch inserts efficiently",
-        "UI remains responsive during transaction recording",
-        "Success feedback appears immediately after submission"
+        "Stock items display CODE, GW, SW, NW, PCS without transaction type badges",
+        "Only live unsold items appear in stock listings",
+        "UI is cleaner without redundant labels"
+      ]
+    },
+    {
+      "id": "REQ-60",
+      "text": "Implement click-to-navigate functionality on Dashboard Current Stock section that opens the Stock Tab directly when clicked, using React Router navigation",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "When the Current Stock is clicked on the dashboard, it should open the Stock Tab directly, showing the live stock data accurately"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Clicking Current Stock section on Dashboard navigates to /stock route",
+        "Navigation is instant and smooth",
+        "Stock page loads with current live data"
+      ]
+    },
+    {
+      "id": "REQ-61",
+      "text": "Add action buttons to Stock View page row selection UI that allow recording selected items as Sales, Sales Return, or Purchase Return transactions directly from the Stock page",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "When you select an item in total or current stock tab, it should give options to add to Sales, Sales Return, Purchase Return, etc., and reflect correctly in respective sections"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After selecting one or more stock rows, action buttons appear for Sales, Sales Return, Purchase Return",
+        "Clicking an action button records the transaction with selected items",
+        "Selected items are immediately removed from or added to stock based on transaction type",
+        "Success feedback is displayed after recording"
+      ]
+    },
+    {
+      "id": "REQ-62",
+      "text": "Update Customer page filtering in frontend/src/pages/Customers.tsx to correctly display sales transactions, return transactions, total gross weight of sales, and total pieces sold for the selected customer",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Currently, filtering by customer name doesn't show sales and returns for that customer. It should display: Sales made to the customer, Returns from the customer, Total gross weight of sales, Total pieces sold"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Selecting a customer tab shows all sales transactions to that customer",
+        "Return transactions from that customer are displayed",
+        "Summary displays total gross weight across all sales",
+        "Summary displays total pieces count across all sales",
+        "Date filtering works correctly within customer view"
+      ]
+    },
+    {
+      "id": "REQ-63",
+      "text": "Highlight completed sales transactions visually in transaction lists and link them to the customer portal by making customer names clickable navigation links",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "When a sale is made, it should be highlighted and linked to the customer's portal"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Sales transactions display with distinct visual highlighting (color, border, or badge)",
+        "Customer names in sales records are clickable links",
+        "Clicking a customer name navigates to that customer's detail page in Customer tab",
+        "Highlight styling is consistent across all transaction views"
+      ]
+    },
+    {
+      "id": "REQ-64",
+      "text": "Resize the four CODE prefix tabs under 'Select Items' section in Sales page (frontend/src/pages/Sales.tsx) to display all four tabs simultaneously on iPhone screen width without horizontal scrolling",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Currently, there are four separate tabs under 'Select Items' in the Sales section. Make these tabs smaller so that all four can be viewed on one iPhone screen without scrolling"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All four CODE prefix tabs fit within iPhone viewport width (375px minimum)",
+        "Tab labels remain readable with responsive font sizing",
+        "No horizontal scrolling required to access any tab",
+        "Layout adapts gracefully to different mobile screen sizes"
+      ]
+    },
+    {
+      "id": "REQ-65",
+      "text": "Move Upload option above the four CODE prefix tabs in Sales page (frontend/src/pages/Sales.tsx), making it a shared entry point for both barcode scanning and manual entry across all tabs",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Place the Upload option above these four tabs, making it easily accessible. This upload option should be common for all tabs (where barcode scanning and manual entry happen)"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Upload button is positioned above CODE prefix tabs",
+        "Upload options (Excel, Manual, Barcode) are accessible from all tabs",
+        "UI clearly indicates Upload is a common action for all CODE groups",
+        "Upload button remains visible without scrolling on mobile"
+      ]
+    },
+    {
+      "id": "REQ-66",
+      "text": "Implement persistent camera permission handling in BarcodeScanner component (frontend/src/components/BarcodeScanner.tsx) that requests permission only once per session and retains permission state across multiple scans",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "For barcode scanning, instead of asking for camera permission repeatedly, ask for permission only once. Once allowed, it should remain enabled for all future scans in the session"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Camera permission is requested only on first scan attempt in a session",
+        "Permission state is stored in session storage or component state",
+        "Subsequent scans use cached permission without re-prompting",
+        "Permission prompt reappears only if user previously denied access"
+      ]
+    },
+    {
+      "id": "REQ-67",
+      "text": "Add report download functionality to Sales, Purchases, Sales Return, Purchase Return, and Stock View pages with export options for PDF and Excel (XLSX) formats",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "The option to download reports should be available in Sales, Purchase, Sales Return, Purchase Return, and Total Stock sections. Reports should be downloadable in PDF and Excel (XLSX) formats"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Download button appears on Sales, Purchases, Sales Return, Purchase Return, and Stock View pages",
+        "Users can select PDF or Excel format from dropdown or modal",
+        "Excel export includes all visible columns (CODE, GW, SW, NW, PCS) with proper formatting",
+        "PDF export generates formatted document with headers and transaction data",
+        "Export includes filtered/sorted data as displayed on screen",
+        "One-click export initiates download immediately"
+      ]
+    },
+    {
+      "id": "REQ-68",
+      "text": "Update StockTable component (frontend/src/components/StockTable.tsx) and FilteredStockView component to enable row selection by clicking anywhere on the row, not just the checkbox, with visual highlighting for selected rows",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "In all tabs (Sales, Stock, etc.), clicking anywhere on a row should select that row. Selected rows should be highlighted visually. Remove dependency on clicking the left-side checkbox/tick mark for selection"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Clicking any cell in a table row toggles row selection",
+        "Selected rows display distinct visual highlighting (background color, border, or shadow)",
+        "Checkbox remains visible but is updated automatically when row is clicked",
+        "Multiple row selection is supported with cumulative highlighting",
+        "Single row selection clears previous selection if Ctrl/Cmd is not held",
+        "Selection behavior is consistent across all stock and transaction tables"
+      ]
+    },
+    {
+      "id": "REQ-69",
+      "text": "Redesign application color theme with a bold, modern palette featuring clean lines, playful accents, minimal gradients, and high contrast, avoiding blue and purple unless user specifies; update frontend/src/index.css with new CSS custom properties",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Color Theme: Pick a sleek, modern palette that feels 'crazy and sexy'—think clean lines, bold accents, and a touch of playfulness"
+        ]
+      },
+      "acceptanceCriteria": [
+        "New color palette uses vibrant, contemporary colors (not blue/purple)",
+        "Primary and accent colors provide strong visual contrast",
+        "Colors are applied consistently across all pages and components",
+        "Dark mode colors are adjusted to match new theme",
+        "Theme feels modern, energetic, and suitable for mobile-first design"
+      ]
+    },
+    {
+      "id": "REQ-70",
+      "text": "Apply modern mobile-optimized UI styling across all pages with spacious cards, clear typography, subtle gradients/shadows for depth, smooth transitions, contemporary icons, animations, and generous whitespace",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Texturing: Minimal, subtle gradients or shadows for depth. Avoid clutter! Phone Style: Optimize for a modern mobile look—spacious cards, clear typography, and smooth transitions. Modern Touch: Incorporate icons, animations, and whitespace for a fresh vibe fitting today's generation"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All cards and panels use subtle shadows or gradients for visual depth",
+        "Typography is clear, legible, and sized appropriately for mobile screens",
+        "Transitions and animations are smooth (200-300ms) without lag",
+        "Icons are modern, consistent, and semantically meaningful",
+        "Layout uses ample whitespace to avoid visual clutter",
+        "UI feels contemporary and aligns with modern mobile app standards"
       ]
     }
   ],
   "constraints": [
-    "Do not change the backend single-actor architecture defined in backend/main.mo",
-    "Do not modify immutable frontend paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui",
-    "Maintain existing scanner string parser logic in frontend/src/utils/scannerParser.ts",
-    "Preserve existing data models for JewelleryItem, TransactionRecord, and Customer in backend/main.mo"
+    "Do not modify backend data models or migration logic",
+    "Maintain existing Internet Identity authentication flow",
+    "Preserve all existing transaction recording logic in backend/main.mo",
+    "Do not alter scanner parser algorithm in frontend/src/utils/scannerParser.ts",
+    "Keep existing CodeChartTabs component structure for CODE prefix grouping",
+    "Maintain compatibility with existing Excel upload and manual entry workflows"
   ],
   "nonGoals": [
-    "Changing the technology stack (React, Motoko, Tailwind, React Query)",
-    "Adding external database integrations",
-    "Implementing real-time WebSocket connections",
-    "Adding authentication providers beyond Internet Identity",
-    "Creating mobile-specific views or responsive breakpoints beyond existing Tailwind defaults"
+    "Adding new transaction types beyond Sales, Purchases, Sales Return, Purchase Return",
+    "Implementing multi-user access control or role-based permissions",
+    "Creating backend API for external integrations",
+    "Adding real-time WebSocket or push notification features",
+    "Implementing data export to cloud storage providers",
+    "Adding inventory forecasting or predictive analytics",
+    "Creating mobile native app versions (React Native, Flutter)"
   ],
   "imageRequirements": {
     "required": [],

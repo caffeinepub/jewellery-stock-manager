@@ -24,6 +24,11 @@ export const ItemType = IDL.Variant({
   'purchase' : IDL.Null,
   'returned' : IDL.Null,
 });
+export const TransactionInput = IDL.Record({
+  'transactionType' : ItemType,
+  'code' : IDL.Text,
+  'timestamp' : IDL.Int,
+});
 export const JewelleryItem = IDL.Record({
   'code' : IDL.Text,
   'netWeight' : IDL.Float64,
@@ -39,17 +44,17 @@ export const TransactionRecord = IDL.Record({
   'item' : JewelleryItem,
   'timestamp' : IDL.Int,
 });
+export const Customer = IDL.Record({
+  'currentHoldings' : IDL.Vec(JewelleryItem),
+  'name' : IDL.Text,
+  'transactionHistory' : IDL.Vec(TransactionRecord),
+});
 export const AnalyticsData = IDL.Record({
   'totalInventoryValue' : IDL.Float64,
   'returnCount' : IDL.Nat,
   'numberOfPieces' : IDL.Nat,
   'purchaseCount' : IDL.Nat,
   'salesCount' : IDL.Nat,
-});
-export const Customer = IDL.Record({
-  'currentHoldings' : IDL.Vec(JewelleryItem),
-  'name' : IDL.Text,
-  'transactionHistory' : IDL.Vec(TransactionRecord),
 });
 
 export const idlService = IDL.Service({
@@ -79,8 +84,24 @@ export const idlService = IDL.Service({
       [],
     ),
   '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
+  'addBatchItems' : IDL.Func(
+      [
+        IDL.Vec(
+          IDL.Tuple(
+            IDL.Text,
+            IDL.Float64,
+            IDL.Float64,
+            IDL.Float64,
+            IDL.Nat,
+            ItemType,
+          )
+        ),
+      ],
+      [],
+      [],
+    ),
   'addBatchTransactions' : IDL.Func(
-      [IDL.Vec(IDL.Tuple(IDL.Text, ItemType, IDL.Int))],
+      [IDL.Vec(TransactionInput)],
       [IDL.Vec(IDL.Text)],
       [],
     ),
@@ -92,6 +113,7 @@ export const idlService = IDL.Service({
   'addTransaction' : IDL.Func([IDL.Text, ItemType, IDL.Int], [IDL.Text], []),
   'createCustomer' : IDL.Func([IDL.Text], [], []),
   'deleteCustomer' : IDL.Func([IDL.Text], [], []),
+  'getAllCustomers' : IDL.Func([], [IDL.Vec(Customer)], ['query']),
   'getAllItems' : IDL.Func([], [IDL.Vec(JewelleryItem)], ['query']),
   'getAllTransactions' : IDL.Func([], [IDL.Vec(TransactionRecord)], ['query']),
   'getAnalyticsData' : IDL.Func([], [AnalyticsData], ['query']),
@@ -138,6 +160,11 @@ export const idlFactory = ({ IDL }) => {
     'purchase' : IDL.Null,
     'returned' : IDL.Null,
   });
+  const TransactionInput = IDL.Record({
+    'transactionType' : ItemType,
+    'code' : IDL.Text,
+    'timestamp' : IDL.Int,
+  });
   const JewelleryItem = IDL.Record({
     'code' : IDL.Text,
     'netWeight' : IDL.Float64,
@@ -153,17 +180,17 @@ export const idlFactory = ({ IDL }) => {
     'item' : JewelleryItem,
     'timestamp' : IDL.Int,
   });
+  const Customer = IDL.Record({
+    'currentHoldings' : IDL.Vec(JewelleryItem),
+    'name' : IDL.Text,
+    'transactionHistory' : IDL.Vec(TransactionRecord),
+  });
   const AnalyticsData = IDL.Record({
     'totalInventoryValue' : IDL.Float64,
     'returnCount' : IDL.Nat,
     'numberOfPieces' : IDL.Nat,
     'purchaseCount' : IDL.Nat,
     'salesCount' : IDL.Nat,
-  });
-  const Customer = IDL.Record({
-    'currentHoldings' : IDL.Vec(JewelleryItem),
-    'name' : IDL.Text,
-    'transactionHistory' : IDL.Vec(TransactionRecord),
   });
   
   return IDL.Service({
@@ -193,8 +220,24 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
+    'addBatchItems' : IDL.Func(
+        [
+          IDL.Vec(
+            IDL.Tuple(
+              IDL.Text,
+              IDL.Float64,
+              IDL.Float64,
+              IDL.Float64,
+              IDL.Nat,
+              ItemType,
+            )
+          ),
+        ],
+        [],
+        [],
+      ),
     'addBatchTransactions' : IDL.Func(
-        [IDL.Vec(IDL.Tuple(IDL.Text, ItemType, IDL.Int))],
+        [IDL.Vec(TransactionInput)],
         [IDL.Vec(IDL.Text)],
         [],
       ),
@@ -206,6 +249,7 @@ export const idlFactory = ({ IDL }) => {
     'addTransaction' : IDL.Func([IDL.Text, ItemType, IDL.Int], [IDL.Text], []),
     'createCustomer' : IDL.Func([IDL.Text], [], []),
     'deleteCustomer' : IDL.Func([IDL.Text], [], []),
+    'getAllCustomers' : IDL.Func([], [IDL.Vec(Customer)], ['query']),
     'getAllItems' : IDL.Func([], [IDL.Vec(JewelleryItem)], ['query']),
     'getAllTransactions' : IDL.Func(
         [],

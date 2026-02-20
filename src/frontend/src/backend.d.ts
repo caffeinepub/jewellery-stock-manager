@@ -28,6 +28,11 @@ export interface Customer {
     name: string;
     transactionHistory: Array<TransactionRecord>;
 }
+export interface TransactionInput {
+    transactionType: ItemType;
+    code: string;
+    timestamp: bigint;
+}
 export interface TransactionRecord {
     id: bigint;
     transactionType: ItemType;
@@ -40,11 +45,13 @@ export enum ItemType {
     returned = "returned"
 }
 export interface backendInterface {
-    addBatchTransactions(transactionsArray: Array<[string, ItemType, bigint]>): Promise<Array<string>>;
+    addBatchItems(itemsArray: Array<[string, number, number, number, bigint, ItemType]>): Promise<void>;
+    addBatchTransactions(transactionsArray: Array<TransactionInput>): Promise<Array<string>>;
     addItem(code: string, grossWeight: number, stoneWeight: number, netWeight: number, pieces: bigint, itemType: ItemType): Promise<void>;
     addTransaction(code: string, transactionType: ItemType, timestamp: bigint): Promise<string>;
     createCustomer(name: string): Promise<void>;
     deleteCustomer(name: string): Promise<void>;
+    getAllCustomers(): Promise<Array<Customer>>;
     getAllItems(): Promise<Array<JewelleryItem>>;
     getAllTransactions(): Promise<Array<TransactionRecord>>;
     getAnalyticsData(): Promise<AnalyticsData>;

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 11,
+  "projectStateVersion": 15,
   "summary": "Jewellery stock management system with dashboard for analytics, and dedicated sections for sales, purchases, and returns (split into Purchase Return and Sales Return). Each section supports Excel uploads to automatically parse jewellery scanner strings (extracting GW, SW, NW, PCS, CODE with validation) and manual data entry. Unified stock view updates in real-time as transactions are recorded. Customer ledger tracking for sales and sales returns. Factory ledger for purchases and purchase returns linked to Zyra Master Production.",
   "architectural_notes": [
     "System designed around four main sections: Dashboard, Sales, Purchases, Returns",
@@ -14,7 +14,14 @@
     "Decimal splitting: try all possible combinations to find 3-number (GW, SW, NW where GW = SW + NW) or 2-number (GW, NW where GW = NW and SW = 0) valid partitions",
     "Use exact decimal arithmetic (no floating-point tolerance); STATUS = VALID only if equation satisfied exactly, MISTAKE if structure valid but equation fails, INVALID if no valid structure"
   ],
-  "known_issues": [],
+  "known_issues": [
+    "Stock tab showing outdated/partial data (~50 items) instead of live data matching Dashboard",
+    "Stock items displaying unnecessary Sales/Purchase labels after stock update",
+    "Customer portal filtering not showing sales and returns for selected customer",
+    "Current Stock click on Dashboard does not navigate to Stock Tab",
+    "Four tabs in Sales section require scrolling on iPhone screen",
+    "Camera permission requested repeatedly instead of once per session"
+  ],
   "isFixRequest": true,
   "existing_features": [
     {
@@ -328,6 +335,206 @@
         "REQ-44"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-fix-dashboard-stock-calculation-logic-in-frontend-src-pages-dashboard-tsx-to-correctly-compute-live-stock-as-total-purchases-gw-total-sales-gw-total-sales-return-gw-total-purchase-return-gw-and-live-stock-items-as-purchase-count-sale-count-sales-return-count-purchase-return-count-ensuring-displayed-totals-match-the-mathematical-relationship-between-transaction-types",
+      "title": "Fix Dashboard stock calculation logic in frontend/src/pages/Dashboard.tsx to correctly compute Live Stock as (Total Purchases GW - Total Sales GW + Total Sales Return GW - Total Purchase Return GW) and Live Stock items as (Purchase count - Sale count + Sales Return count - Purchase Return count), ensuring displayed totals match the mathematical relationship between transaction types",
+      "reqIds": [
+        "REQ-45"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-redesign-dashboard-page-in-frontend-src-pages-dashboard-tsx-to-display-current-stock-as-an-interactive-vibrant-colored-tab-with-enhanced-text-styling-that-expands-on-click-to-show-full-stock-details-items-gross-weight-stone-weight-net-weight-pieces",
+      "title": "Redesign Dashboard page in frontend/src/pages/Dashboard.tsx to display Current Stock as an interactive, vibrant colored tab with enhanced text styling that expands on click to show full stock details (items, gross weight, stone weight, net weight, pieces)",
+      "reqIds": [
+        "REQ-46"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-the-total-transactions-display-section-and-quick-entries-panel-from-the-dashboard-page-in-frontend-src-pages-dashboard-tsx",
+      "title": "Remove the Total Transactions display section and Quick Entries panel from the Dashboard page in frontend/src/pages/Dashboard.tsx",
+      "reqIds": [
+        "REQ-47"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-redesign-sales-purchases-and-returns-summary-cards-on-dashboard-in-frontend-src-pages-dashboard-tsx-to-display-as-small-interesting-visual-cards-showing-total-quantity-sold-purchased-returned-and-total-items-pcs-with-click-to-expand-functionality-that-opens-detailed-entries-for-that-transaction-type",
+      "title": "Redesign Sales, Purchases, and Returns summary cards on Dashboard in frontend/src/pages/Dashboard.tsx to display as small, interesting visual cards showing total quantity sold/purchased/returned and total items/pcs, with click-to-expand functionality that opens detailed entries for that transaction type",
+      "reqIds": [
+        "REQ-48"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-all-total-display-tabs-and-buttons-throughout-the-application-dashboard-sales-purchases-returns-stock-customers-factory-are-positioned-to-be-fully-visible-on-mobile-screens-without-requiring-scrolling-adjusting-layouts-in-all-page-components-and-frontend-src-components-layout-tsx-as-needed",
+      "title": "Ensure all total display tabs and buttons throughout the application (Dashboard, Sales, Purchases, Returns, Stock, Customers, Factory) are positioned to be fully visible on mobile screens without requiring scrolling, adjusting layouts in all page components and frontend/src/components/Layout.tsx as needed",
+      "reqIds": [
+        "REQ-49"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-upload-button-above-the-items-for-sale-section-in-frontend-src-pages-sales-tsx-that-when-clicked-displays-a-modal-or-dropdown-with-two-options-excel-upload-and-manual-upload",
+      "title": "Add an Upload button above the items for sale section in frontend/src/pages/Sales.tsx that when clicked displays a modal or dropdown with two options: Excel Upload and Manual Upload",
+      "reqIds": [
+        "REQ-50"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-transactionpreview-component-in-frontend-src-components-transactionpreview-tsx-to-display-a-confirmation-popup-modal-when-submit-is-clicked-showing-current-gross-total-weight-total-pieces-count-and-an-optional-customer-name-input-field-save-customer-name-to-backend-if-provided",
+      "title": "Update TransactionPreview component in frontend/src/components/TransactionPreview.tsx to display a confirmation popup modal when Submit is clicked, showing current gross total weight, total pieces count, and an optional customer name input field; save customer name to backend if provided",
+      "reqIds": [
+        "REQ-51"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-customer-tab-page-in-frontend-src-pages-customers-tsx-to-display-all-customer-names-as-individual-tabs-clicking-a-customer-tab-shows-a-dashboard-with-total-sales-for-that-customer-at-the-top-a-date-filter-to-view-date-wise-sales-history-and-below-that-all-item-rows-sold-to-that-customer",
+      "title": "Update Customer tab page in frontend/src/pages/Customers.tsx to display all customer names as individual tabs; clicking a customer tab shows a dashboard with total sales for that customer at the top, a date filter to view date-wise sales history, and below that all item rows sold to that customer",
+      "reqIds": [
+        "REQ-52"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-view-totals-sub-tab-in-transactiontotalsview-component-frontend-src-components-transactiontotalsview-tsx-to-add-a-date-picker-for-today-s-transaction-that-allows-selecting-any-date-to-filter-transaction-data-when-a-transaction-row-tab-is-clicked-display-all-transaction-rows-filtered-by-customer-name-when-overall-order-is-clicked-display-all-transaction-rows-without-filtering",
+      "title": "Update View Totals sub-tab in TransactionTotalsView component (frontend/src/components/TransactionTotalsView.tsx) to add a date picker for Today's Transaction that allows selecting any date to filter transaction data; when a transaction row tab is clicked, display all transaction rows filtered by customer name; when Overall Order is clicked, display all transaction rows without filtering",
+      "reqIds": [
+        "REQ-53"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-separate-top-level-tabs-for-sales-return-and-purchase-return-in-the-returns-page-frontend-src-pages-returns-tsx-removing-the-current-combined-card-layout-and-providing-independent-navigation-and-entry-interfaces-for-each-return-type",
+      "title": "Create separate top-level tabs for Sales Return and Purchase Return in the Returns page (frontend/src/pages/Returns.tsx), removing the current combined card layout and providing independent navigation and entry interfaces for each return type",
+      "reqIds": [
+        "REQ-54"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-stock-view-page-in-frontend-src-pages-stockview-tsx-to-display-only-current-live-stock-excluding-items-already-sold-or-assigned-add-row-selection-single-and-multiple-with-checkboxes-and-provide-action-buttons-to-record-sales-purchases-sales-return-or-purchase-return-transactions-directly-from-the-stock-page",
+      "title": "Update Stock View page in frontend/src/pages/StockView.tsx to display only current live stock (excluding items already sold or assigned), add row selection (single and multiple) with checkboxes, and provide action buttons to record Sales, Purchases, Sales Return, or Purchase Return transactions directly from the Stock page",
+      "reqIds": [
+        "REQ-55"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-barcode-scanning-capability-to-all-upload-pages-sales-purchases-purchase-return-sales-return-in-the-respective-page-components-enabling-mobile-camera-access-to-scan-barcodes-that-extract-jewellery-data-in-the-same-format-as-raw-excel-uploads-then-apply-the-existing-parser-logic-from-frontend-src-utils-scannerparser-ts-to-add-scanned-items-as-line-entries",
+      "title": "Add barcode scanning capability to all upload pages (Sales, Purchases, Purchase Return, Sales Return) in the respective page components, enabling mobile camera access to scan barcodes that extract jewellery data in the same format as raw Excel uploads, then apply the existing parser logic from frontend/src/utils/scannerParser.ts to add scanned items as line entries",
+      "reqIds": [
+        "REQ-56"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-dashboard-current-stock-calculation-to-accurately-match-stock-view-page-by-ensuring-both-locations-use-the-same-data-source-and-calculation-logic-total-purchases-total-sales-total-sales-return-total-purchase-return-from-backend-analytics",
+      "title": "Fix Dashboard current stock calculation to accurately match Stock View page by ensuring both locations use the same data source and calculation logic (Total Purchases - Total Sales + Total Sales Return - Total Purchase Return) from backend analytics",
+      "reqIds": [
+        "REQ-57"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-stock-view-page-in-frontend-src-pages-stockview-tsx-to-fetch-and-display-only-live-unsold-items-from-backend-ensuring-real-time-synchronization-with-all-transaction-recordings",
+      "title": "Update Stock View page in frontend/src/pages/StockView.tsx to fetch and display only live unsold items from backend, ensuring real-time synchronization with all transaction recordings",
+      "reqIds": [
+        "REQ-58"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-sales-and-purchase-badge-labels-from-stock-items-displayed-in-stock-view-page-frontend-src-pages-stockview-tsx-and-other-stock-listing-components",
+      "title": "Remove 'Sales' and 'Purchase' badge labels from stock items displayed in Stock View page (frontend/src/pages/StockView.tsx) and other stock listing components",
+      "reqIds": [
+        "REQ-59"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-click-to-navigate-functionality-on-dashboard-current-stock-section-that-opens-the-stock-tab-directly-when-clicked-using-react-router-navigation",
+      "title": "Implement click-to-navigate functionality on Dashboard Current Stock section that opens the Stock Tab directly when clicked, using React Router navigation",
+      "reqIds": [
+        "REQ-60"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-action-buttons-to-stock-view-page-row-selection-ui-that-allow-recording-selected-items-as-sales-sales-return-or-purchase-return-transactions-directly-from-the-stock-page",
+      "title": "Add action buttons to Stock View page row selection UI that allow recording selected items as Sales, Sales Return, or Purchase Return transactions directly from the Stock page",
+      "reqIds": [
+        "REQ-61"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-customer-page-filtering-in-frontend-src-pages-customers-tsx-to-correctly-display-sales-transactions-return-transactions-total-gross-weight-of-sales-and-total-pieces-sold-for-the-selected-customer",
+      "title": "Update Customer page filtering in frontend/src/pages/Customers.tsx to correctly display sales transactions, return transactions, total gross weight of sales, and total pieces sold for the selected customer",
+      "reqIds": [
+        "REQ-62"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-highlight-completed-sales-transactions-visually-in-transaction-lists-and-link-them-to-the-customer-portal-by-making-customer-names-clickable-navigation-links",
+      "title": "Highlight completed sales transactions visually in transaction lists and link them to the customer portal by making customer names clickable navigation links",
+      "reqIds": [
+        "REQ-63"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-resize-the-four-code-prefix-tabs-under-select-items-section-in-sales-page-frontend-src-pages-sales-tsx-to-display-all-four-tabs-simultaneously-on-iphone-screen-width-without-horizontal-scrolling",
+      "title": "Resize the four CODE prefix tabs under 'Select Items' section in Sales page (frontend/src/pages/Sales.tsx) to display all four tabs simultaneously on iPhone screen width without horizontal scrolling",
+      "reqIds": [
+        "REQ-64"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-move-upload-option-above-the-four-code-prefix-tabs-in-sales-page-frontend-src-pages-sales-tsx-making-it-a-shared-entry-point-for-both-barcode-scanning-and-manual-entry-across-all-tabs",
+      "title": "Move Upload option above the four CODE prefix tabs in Sales page (frontend/src/pages/Sales.tsx), making it a shared entry point for both barcode scanning and manual entry across all tabs",
+      "reqIds": [
+        "REQ-65"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-report-download-functionality-to-sales-purchases-sales-return-purchase-return-and-stock-view-pages-with-export-options-for-pdf-and-excel-xlsx-formats",
+      "title": "Add report download functionality to Sales, Purchases, Sales Return, Purchase Return, and Stock View pages with export options for PDF and Excel (XLSX) formats",
+      "reqIds": [
+        "REQ-67"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-stocktable-component-frontend-src-components-stocktable-tsx-and-filteredstockview-component-to-enable-row-selection-by-clicking-anywhere-on-the-row-not-just-the-checkbox-with-visual-highlighting-for-selected-rows",
+      "title": "Update StockTable component (frontend/src/components/StockTable.tsx) and FilteredStockView component to enable row selection by clicking anywhere on the row, not just the checkbox, with visual highlighting for selected rows",
+      "reqIds": [
+        "REQ-68"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-redesign-application-color-theme-with-a-bold-modern-palette-featuring-clean-lines-playful-accents-minimal-gradients-and-high-contrast-avoiding-blue-and-purple-unless-user-specifies-update-frontend-src-index-css-with-new-css-custom-properties",
+      "title": "Redesign application color theme with a bold, modern palette featuring clean lines, playful accents, minimal gradients, and high contrast, avoiding blue and purple unless user specifies; update frontend/src/index.css with new CSS custom properties",
+      "reqIds": [
+        "REQ-69"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-apply-modern-mobile-optimized-ui-styling-across-all-pages-with-spacious-cards-clear-typography-subtle-gradients-shadows-for-depth-smooth-transitions-contemporary-icons-animations-and-generous-whitespace",
+      "title": "Apply modern mobile-optimized UI styling across all pages with spacious cards, clear typography, subtle gradients/shadows for depth, smooth transitions, contemporary icons, animations, and generous whitespace",
+      "reqIds": [
+        "REQ-70"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -536,6 +743,140 @@
       "summary": "Implement real-time inventory state management in backend/main.mo that updates the current stock immediately after each transaction is recorded, ensuring Sales moves items to customer holdings, Purchases add to total stock, Sales Return restores to total stock, and Purchase Return removes from total stock",
       "reqIds": [
         "REQ-43"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-62",
+      "summary": "Redesign Dashboard to show live stock as interactive vibrant tab; remove total transaction display and quick entries panel; display Sales, Purchases, Returns as small interesting summary cards showing total qty and pcs that expand on click",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-63",
+      "summary": "Ensure all total display tabs and buttons are visible on mobile without scrolling on every page throughout the app",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-64",
+      "summary": "Add Upload button above items for sale that presents choice between Excel upload and Manual upload",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-65",
+      "summary": "Show popup confirmation box on Submit with current gross total and pcs plus optional customer name field; save customer name if provided",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-66",
+      "summary": "In Customer tab, display all customer names as tabs; clicking a customer shows dashboard with total sales for that customer, date filter for sales history, and item rows sold to that customer",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-67",
+      "summary": "In View Totals, add date picker for Today's Transaction to filter by selected date; show rows filtered by customer name; Overall Order displays all transaction rows",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-68",
+      "summary": "Separate tabs for Sales Return and Purchase Return in the Returns section",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-69",
+      "summary": "Update Stock tab to show only current live stock with row selection for recording Sales/Purchase/Sales Return/Purchase Return entries directly from Stock page",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-70",
+      "summary": "Add barcode scanning option in upload pages that reads from mobile camera, extracts data like raw Excel upload, and applies same parsing rules to add line items",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-71",
+      "summary": "Fix Dashboard current stock display to match actual Stock tab live data; ensure Stock tab shows accurate real-time quantities instead of outdated/partial information (currently showing ~50 items when it should match dashboard)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-72",
+      "summary": "Add action buttons in Stock tab row selection to add selected items to Sales, Sales Return, or Purchase Return and correctly reflect them in respective sections",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-73",
+      "summary": "Remove unnecessary Sales and Purchase labels displayed on the side of stock items after stock is updated",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-74",
+      "summary": "Highlight sales transactions and link them to the customer portal when a sale is made",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-75",
+      "summary": "Fix Customer portal filtering: when filtering by customer name, display sales made to that customer, returns from that customer, total gross weight of sales, and total pieces sold",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-76",
+      "summary": "When Current Stock is clicked on Dashboard, open Stock Tab directly showing live stock data accurately",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-77",
+      "summary": "Resize four tabs under 'Select Items' in Sales section to fit all four on one iPhone screen without scrolling",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-78",
+      "summary": "Place Upload option above the four tabs in Sales section, making it common for all tabs (barcode scanning and manual entry)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-79",
+      "summary": "Request camera permission for barcode scanning only once per session; once allowed, keep it enabled for all future scans in the session",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-80",
+      "summary": "Add report download feature in Sales, Purchase, Sales Return, Purchase Return, and Total Stock sections supporting PDF and Excel (XLSX) formats with one-click export",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-81",
+      "summary": "Improve row selection in all tabs (Sales, Stock, etc.) to select row on click anywhere in the row (not just checkbox); highlight selected rows visually and support single/multiple selection",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-82",
+      "summary": "Redesign app UI with sleek, modern color theme (bold accents, clean lines, playful touch), minimal texturing (subtle gradients/shadows), modern mobile-optimized layout (spacious cards, clear typography, smooth transitions), and contemporary touches (icons, animations, whitespace)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-92",
+      "summary": "Implement persistent camera permission handling in BarcodeScanner component (frontend/src/components/BarcodeScanner.tsx) that requests permission only once per session and retains permission state across multiple scans",
+      "reqIds": [
+        "REQ-66"
       ],
       "status": "pending"
     }

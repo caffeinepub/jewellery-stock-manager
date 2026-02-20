@@ -2,12 +2,202 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-remove-excessive-celebration-text-titles-and-use-case-explanations-from-all-screens-to-create-a-cleaner-more-professional-ui-across-dashboard-sales-purchases-returns-stock-view-customers-and-factory-pages",
-      "featureTitle": "Remove excessive celebration text, titles, and use case explanations from all screens to create a cleaner, more professional UI across Dashboard, Sales, Purchases, Returns, Stock View, Customers, and Factory pages",
+      "featureId": "feature-fix-dashboard-current-stock-calculation-to-accurately-match-stock-view-page-by-ensuring-both-locations-use-the-same-data-source-and-calculation-logic-total-purchases-total-sales-total-sales-return-total-purchase-return-from-backend-analytics",
+      "featureTitle": "Fix Dashboard current stock calculation to accurately match Stock View page by ensuring both locations use the same data source and calculation logic (Total Purchases - Total Sales + Total Sales Return - Total Purchase Return) from backend analytics",
       "files": [
-        "frontend/src/pages/Customers.tsx",
-        "frontend/src/pages/Dashboard.tsx",
-        "frontend/src/pages/Factory.tsx",
+        "frontend/src/pages/Dashboard.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-57"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-stock-view-page-in-frontend-src-pages-stockview-tsx-to-fetch-and-display-only-live-unsold-items-from-backend-ensuring-real-time-synchronization-with-all-transaction-recordings",
+      "featureTitle": "Update Stock View page in frontend/src/pages/StockView.tsx to fetch and display only live unsold items from backend, ensuring real-time synchronization with all transaction recordings",
+      "files": [
+        "frontend/src/pages/StockView.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-58"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-remove-sales-and-purchase-badge-labels-from-stock-items-displayed-in-stock-view-page-frontend-src-pages-stockview-tsx-and-other-stock-listing-components",
+      "featureTitle": "Remove 'Sales' and 'Purchase' badge labels from stock items displayed in Stock View page (frontend/src/pages/StockView.tsx) and other stock listing components",
+      "files": [
+        "frontend/src/components/FilteredStockView.tsx",
+        "frontend/src/components/StockTable.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-59"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-click-to-navigate-functionality-on-dashboard-current-stock-section-that-opens-the-stock-tab-directly-when-clicked-using-react-router-navigation",
+      "featureTitle": "Implement click-to-navigate functionality on Dashboard Current Stock section that opens the Stock Tab directly when clicked, using React Router navigation",
+      "files": [
+        "frontend/src/pages/Dashboard.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-60"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-action-buttons-to-stock-view-page-row-selection-ui-that-allow-recording-selected-items-as-sales-sales-return-or-purchase-return-transactions-directly-from-the-stock-page",
+      "featureTitle": "Add action buttons to Stock View page row selection UI that allow recording selected items as Sales, Sales Return, or Purchase Return transactions directly from the Stock page",
+      "files": [
+        "frontend/src/components/StockTable.tsx",
+        "frontend/src/pages/StockView.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-61"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-customer-page-filtering-in-frontend-src-pages-customers-tsx-to-correctly-display-sales-transactions-return-transactions-total-gross-weight-of-sales-and-total-pieces-sold-for-the-selected-customer",
+      "featureTitle": "Update Customer page filtering in frontend/src/pages/Customers.tsx to correctly display sales transactions, return transactions, total gross weight of sales, and total pieces sold for the selected customer",
+      "files": [
+        "frontend/src/pages/Customers.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-62"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-highlight-completed-sales-transactions-visually-in-transaction-lists-and-link-them-to-the-customer-portal-by-making-customer-names-clickable-navigation-links",
+      "featureTitle": "Highlight completed sales transactions visually in transaction lists and link them to the customer portal by making customer names clickable navigation links",
+      "files": [
+        "frontend/src/components/TransactionTotalsView.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-63"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-resize-the-four-code-prefix-tabs-under-select-items-section-in-sales-page-frontend-src-pages-sales-tsx-to-display-all-four-tabs-simultaneously-on-iphone-screen-width-without-horizontal-scrolling",
+      "featureTitle": "Resize the four CODE prefix tabs under 'Select Items' section in Sales page (frontend/src/pages/Sales.tsx) to display all four tabs simultaneously on iPhone screen width without horizontal scrolling",
+      "files": [
+        "frontend/src/components/CodeChartTabs.tsx",
+        "frontend/src/pages/Sales.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-64"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-move-upload-option-above-the-four-code-prefix-tabs-in-sales-page-frontend-src-pages-sales-tsx-making-it-a-shared-entry-point-for-both-barcode-scanning-and-manual-entry-across-all-tabs",
+      "featureTitle": "Move Upload option above the four CODE prefix tabs in Sales page (frontend/src/pages/Sales.tsx), making it a shared entry point for both barcode scanning and manual entry across all tabs",
+      "files": [
+        "frontend/src/pages/Sales.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-65"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-report-download-functionality-to-sales-purchases-sales-return-purchase-return-and-stock-view-pages-with-export-options-for-pdf-and-excel-xlsx-formats",
+      "featureTitle": "Add report download functionality to Sales, Purchases, Sales Return, Purchase Return, and Stock View pages with export options for PDF and Excel (XLSX) formats",
+      "files": [
+        "frontend/src/components/ReportDownloader.tsx",
         "frontend/src/pages/Purchases.tsx",
         "frontend/src/pages/Returns.tsx",
         "frontend/src/pages/Sales.tsx",
@@ -19,102 +209,22 @@
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
       ],
       "testIds": [
-        "REQ-36"
+        "REQ-67"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-fix-dashboard-analytics-calculations-in-frontend-src-pages-dashboard-tsx-to-correctly-derive-and-aggregate-values-from-all-four-transaction-types-sales-purchases-sales-return-purchase-return-ensuring-totals-match-the-sum-of-individual-tab-data",
-      "featureTitle": "Fix Dashboard analytics calculations in frontend/src/pages/Dashboard.tsx to correctly derive and aggregate values from all four transaction types (Sales, Purchases, Sales Return, Purchase Return) ensuring totals match the sum of individual tab data",
-      "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/Dashboard.tsx"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-37"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-simplify-main-dashboard-page-layout-in-frontend-src-pages-dashboard-tsx-by-removing-duplicate-data-displays-and-ensuring-charts-and-tabs-below-show-complementary-information-rather-than-repeating-the-same-statistics",
-      "featureTitle": "Simplify main Dashboard page layout in frontend/src/pages/Dashboard.tsx by removing duplicate data displays and ensuring charts and tabs below show complementary information rather than repeating the same statistics",
-      "files": [
-        "frontend/src/pages/Dashboard.tsx"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-38"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-redesign-sales-and-sales-return-make-entry-pages-frontend-src-pages-sales-tsx-and-frontend-src-pages-returns-tsx-to-display-code-alphabet-groups-as-colorful-chart-tabs-instead-of-the-current-tabbed-stock-selector-interface",
-      "featureTitle": "Redesign Sales and Sales Return 'Make Entry' pages (frontend/src/pages/Sales.tsx and frontend/src/pages/Returns.tsx) to display CODE alphabet groups as colorful chart tabs instead of the current tabbed stock selector interface",
-      "files": [
-        "frontend/src/components/CodeChartTabs.tsx",
-        "frontend/src/pages/Returns.tsx",
-        "frontend/src/pages/Sales.tsx"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-39"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-implement-drill-down-functionality-in-sales-and-sales-return-pages-where-clicking-a-code-chart-tab-displays-only-the-stock-rows-matching-that-specific-code-prefix-with-row-selection-confined-within-that-single-tab-view",
-      "featureTitle": "Implement drill-down functionality in Sales and Sales Return pages where clicking a CODE chart tab displays only the stock rows matching that specific CODE prefix, with row selection confined within that single tab view",
-      "files": [
-        "frontend/src/components/CodeChartTabs.tsx",
-        "frontend/src/components/FilteredStockView.tsx",
-        "frontend/src/pages/Returns.tsx",
-        "frontend/src/pages/Sales.tsx"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-40"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-allow-users-to-navigate-between-multiple-code-chart-tabs-accumulate-row-selections-from-each-tab-then-return-to-the-chart-tab-overview-screen-where-a-record-entry-button-finalizes-all-selected-rows-as-a-single-batch-transaction-for-sales-or-sales-return",
-      "featureTitle": "Allow users to navigate between multiple CODE chart tabs, accumulate row selections from each tab, then return to the chart tab overview screen where a 'Record Entry' button finalizes all selected rows as a single batch transaction for Sales or Sales Return",
+      "featureId": "feature-update-stocktable-component-frontend-src-components-stocktable-tsx-and-filteredstockview-component-to-enable-row-selection-by-clicking-anywhere-on-the-row-not-just-the-checkbox-with-visual-highlighting-for-selected-rows",
+      "featureTitle": "Update StockTable component (frontend/src/components/StockTable.tsx) and FilteredStockView component to enable row selection by clicking anywhere on the row, not just the checkbox, with visual highlighting for selected rows",
       "files": [
         "frontend/src/components/FilteredStockView.tsx",
-        "frontend/src/pages/Returns.tsx",
-        "frontend/src/pages/Sales.tsx"
+        "frontend/src/components/StockTable.tsx",
+        "frontend/src/components/TransactionTotalsView.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -122,20 +232,48 @@
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
       ],
       "testIds": [
-        "REQ-41"
+        "REQ-68"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-stock-filtering-logic-in-sales-purchases-sales-return-and-purchase-return-pages-to-display-only-current-live-stock-that-reflects-the-state-after-the-most-recent-transaction-ensuring-items-already-assigned-to-customers-or-removed-from-inventory-are-excluded-from-selection",
-      "featureTitle": "Update stock filtering logic in Sales, Purchases, Sales Return, and Purchase Return pages to display only current live stock that reflects the state after the most recent transaction, ensuring items already assigned to customers or removed from inventory are excluded from selection",
+      "featureId": "feature-redesign-application-color-theme-with-a-bold-modern-palette-featuring-clean-lines-playful-accents-minimal-gradients-and-high-contrast-avoiding-blue-and-purple-unless-user-specifies-update-frontend-src-index-css-with-new-css-custom-properties",
+      "featureTitle": "Redesign application color theme with a bold, modern palette featuring clean lines, playful accents, minimal gradients, and high contrast, avoiding blue and purple unless user specifies; update frontend/src/index.css with new CSS custom properties",
       "files": [
-        "frontend/src/components/CodeChartTabs.tsx",
+        "frontend/src/index.css",
+        "frontend/tailwind.config.js"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-69"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-apply-modern-mobile-optimized-ui-styling-across-all-pages-with-spacious-cards-clear-typography-subtle-gradients-shadows-for-depth-smooth-transitions-contemporary-icons-animations-and-generous-whitespace",
+      "featureTitle": "Apply modern mobile-optimized UI styling across all pages with spacious cards, clear typography, subtle gradients/shadows for depth, smooth transitions, contemporary icons, animations, and generous whitespace",
+      "files": [
         "frontend/src/components/FilteredStockView.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/components/Layout.tsx",
+        "frontend/src/components/StockTable.tsx",
+        "frontend/src/pages/Customers.tsx",
+        "frontend/src/pages/Dashboard.tsx",
+        "frontend/src/pages/Sales.tsx",
+        "frontend/src/pages/StockView.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -143,30 +281,12 @@
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
       ],
       "testIds": [
-        "REQ-42"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-optimize-transaction-recording-performance-in-backend-main-mo-and-frontend-transaction-pages-to-ensure-multi-row-batch-entries-across-sales-purchases-sales-return-and-purchase-return-are-processed-quickly-and-instantly-without-delays",
-      "featureTitle": "Optimize transaction recording performance in backend/main.mo and frontend transaction pages to ensure multi-row batch entries across Sales, Purchases, Sales Return, and Purchase Return are processed quickly and instantly without delays",
-      "files": [
-        "frontend/src/components/TransactionPreview.tsx",
-        "frontend/src/hooks/useQueries.ts"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-44"
+        "REQ-70"
       ],
       "confidence": "high"
     }

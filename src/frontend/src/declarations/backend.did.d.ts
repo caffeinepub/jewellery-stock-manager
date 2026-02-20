@@ -34,6 +34,11 @@ export interface JewelleryItem {
   'itemType' : ItemType,
   'stoneWeight' : number,
 }
+export interface TransactionInput {
+  'transactionType' : ItemType,
+  'code' : string,
+  'timestamp' : bigint,
+}
 export interface TransactionRecord {
   'id' : bigint,
   'transactionType' : ItemType,
@@ -67,8 +72,12 @@ export interface _SERVICE {
     _CaffeineStorageRefillResult
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
+  'addBatchItems' : ActorMethod<
+    [Array<[string, number, number, number, bigint, ItemType]>],
+    undefined
+  >,
   'addBatchTransactions' : ActorMethod<
-    [Array<[string, ItemType, bigint]>],
+    [Array<TransactionInput>],
     Array<string>
   >,
   'addItem' : ActorMethod<
@@ -78,6 +87,7 @@ export interface _SERVICE {
   'addTransaction' : ActorMethod<[string, ItemType, bigint], string>,
   'createCustomer' : ActorMethod<[string], undefined>,
   'deleteCustomer' : ActorMethod<[string], undefined>,
+  'getAllCustomers' : ActorMethod<[], Array<Customer>>,
   'getAllItems' : ActorMethod<[], Array<JewelleryItem>>,
   'getAllTransactions' : ActorMethod<[], Array<TransactionRecord>>,
   'getAnalyticsData' : ActorMethod<[], AnalyticsData>,

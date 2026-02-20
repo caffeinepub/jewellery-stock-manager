@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { AnalyticsData, JewelleryItem, ItemType, TransactionRecord, Customer } from '../backend';
+import type { AnalyticsData, JewelleryItem, ItemType, TransactionRecord, Customer, TransactionInput } from '../backend';
 
 export function useAnalytics() {
   const { actor, isFetching } = useActor();
@@ -64,9 +64,7 @@ export function useCustomers() {
     queryKey: ['customers'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not initialized');
-      // Note: Backend doesn't have getAllCustomers, so this is a placeholder
-      // In a real implementation, you'd need to add this to the backend
-      return [];
+      return actor.getAllCustomers();
     },
     enabled: !!actor && !isFetching,
   });
@@ -96,7 +94,7 @@ export function useBatchTransactionMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (transactions: Array<[string, ItemType, bigint]>) => {
+    mutationFn: async (transactions: TransactionInput[]) => {
       if (!actor) throw new Error('Actor not initialized');
       return actor.addBatchTransactions(transactions);
     },

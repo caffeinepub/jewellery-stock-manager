@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CheckCircle2, XCircle, AlertTriangle, Loader2, Edit2, Trash2, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ParsedItem } from '../utils/scannerParser';
@@ -37,8 +38,20 @@ export default function TransactionPreview({
   const [customerName, setCustomerName] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<Partial<ParsedItem>>({});
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const needsCustomerName = transactionType === ItemType.sale || isSalesReturn;
+
+  // Calculate totals for selected valid items
+  const totals = items
+    .filter((item, i) => selectedItems.has(i) && item.status === 'VALID')
+    .reduce(
+      (acc, item) => ({
+        totalGW: acc.totalGW + (item.grossWeight || 0),
+        totalPCS: acc.totalPCS + (item.pieces || 0),
+      }),
+      { totalGW: 0, totalPCS: 0 }
+    );
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -55,11 +68,8 @@ export default function TransactionPreview({
         }
       }
 
-      // Use batch transaction for better performance
-      const batchData: Array<[string, ItemType, bigint]> = [];
-
+      // Add items and create transactions
       for (const item of itemsToProcess) {
-        // Add item first
         await actor.addItem(
           item.code,
           item.grossWeight!,
@@ -68,12 +78,15 @@ export default function TransactionPreview({
           BigInt(item.pieces!),
           transactionType
         );
-
-        // Prepare batch transaction
-        batchData.push([item.code, transactionType, BigInt(Date.now() * 1000000)]);
       }
 
-      // Submit batch
+      // Batch transactions
+      const batchData = itemsToProcess.map((item) => ({
+        code: item.code,
+        transactionType,
+        timestamp: BigInt(Date.now() * 1000000),
+      }));
+
       if (batchData.length > 0) {
         await actor.addBatchTransactions(batchData);
       }
@@ -86,12 +99,25 @@ export default function TransactionPreview({
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['factory'] });
       toast.success(`Successfully processed ${selectedItems.size} items`);
+      setShowConfirmDialog(false);
       onComplete();
     },
     onError: (error) => {
       toast.error(`Failed to process transactions: ${error instanceof Error ? error.message : 'Unknown error'}`);
     },
   });
+
+  const handleSubmitClick = () => {
+    if (selectedItems.size === 0) {
+      toast.error('Please select at least one valid item');
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmSubmit = () => {
+    mutation.mutate();
+  };
 
   const toggleItem = (index: number) => {
     const item = items[index];
@@ -128,263 +154,245 @@ export default function TransactionPreview({
     const sw = editValues.stoneWeight!;
     const nw = editValues.netWeight!;
 
-    // Validate equation
-    const tolerance = 0.01;
-    const calculatedGW = sw + nw;
-    const isValid = Math.abs(gw - calculatedGW) <= tolerance;
+    // Validate
+    const tolerance = 0.001;
+    const isValid = Math.abs(gw - sw - nw) < tolerance;
 
-    const updatedItem: ParsedItem = {
+    const updatedItems = [...items];
+    updatedItems[index] = {
+      ...updatedItems[index],
       code: editValues.code!,
       grossWeight: gw,
       stoneWeight: sw,
       netWeight: nw,
       pieces: editValues.pieces!,
       status: isValid ? 'VALID' : 'MISTAKE',
-      error: isValid ? undefined : `GW (${gw.toFixed(3)}) ≠ SW + NW (${calculatedGW.toFixed(3)})`,
+      error: isValid ? undefined : 'GW - SW ≠ NW',
     };
 
-    const newItems = [...items];
-    newItems[index] = updatedItem;
-    onItemsChange(newItems);
-
-    // Update selection if now valid
-    if (isValid) {
-      const newSelected = new Set(selectedItems);
-      newSelected.add(index);
-      setSelectedItems(newSelected);
-    }
-
+    onItemsChange(updatedItems);
     setEditingIndex(null);
     setEditValues({});
-    toast.success('Item updated');
   };
 
   const deleteItem = (index: number) => {
-    const newItems = items.filter((_, i) => i !== index);
-    onItemsChange(newItems);
-
-    // Update selection indices
-    const newSelected = new Set<number>();
-    selectedItems.forEach((i) => {
-      if (i < index) {
-        newSelected.add(i);
-      } else if (i > index) {
-        newSelected.add(i - 1);
-      }
-    });
+    const updatedItems = items.filter((_, i) => i !== index);
+    onItemsChange(updatedItems);
+    const newSelected = new Set(selectedItems);
+    newSelected.delete(index);
     setSelectedItems(newSelected);
-
-    toast.success('Item deleted');
   };
 
-  const validItems = items.filter((item) => item.status === 'VALID');
-  const mistakeItems = items.filter((item) => item.status === 'MISTAKE');
-  const invalidItems = items.filter((item) => item.status === 'INVALID');
-  const selectedValidCount = validItems.filter((item) => selectedItems.has(items.indexOf(item))).length;
-
-  const getStatusBadge = (status: ParsedItem['status']) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'VALID':
         return (
-          <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
             <CheckCircle2 className="mr-1 h-3 w-3" />
-            VALID
+            Valid
           </Badge>
         );
       case 'MISTAKE':
         return (
-          <Badge variant="default" className="bg-amber-600 hover:bg-amber-700">
+          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
             <AlertTriangle className="mr-1 h-3 w-3" />
-            MISTAKE
+            Warning
           </Badge>
         );
       case 'INVALID':
         return (
-          <Badge variant="destructive">
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
             <XCircle className="mr-1 h-3 w-3" />
-            INVALID
+            Invalid
           </Badge>
         );
+      default:
+        return null;
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Transaction Preview</CardTitle>
-        <CardDescription>
-          {validItems.length} valid, {mistakeItems.length} mistakes, {invalidItems.length} invalid.
-          {selectedValidCount > 0 && ` ${selectedValidCount} selected.`}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Submit Section */}
-        <div className="space-y-4 p-4 bg-primary/10 rounded-lg border border-primary/20">
-          {needsCustomerName && (
-            <div className="space-y-2">
-              <Label htmlFor="customerName">Customer Name (optional)</Label>
-              <Input
-                id="customerName"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Enter customer name"
-              />
-            </div>
-          )}
-          
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">
-              {selectedValidCount} of {validItems.length} items selected
-            </p>
-            <Button
-              onClick={() => mutation.mutate()}
-              disabled={selectedValidCount === 0 || mutation.isPending}
-              size="lg"
-            >
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Transaction Preview</CardTitle>
+          <CardDescription>
+            Review and edit items before submission. {selectedItems.size} of {items.length} items selected.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">Select</TableHead>
+                  <TableHead>Code</TableHead>
+                  <TableHead className="text-right">GW (g)</TableHead>
+                  <TableHead className="text-right">SW (g)</TableHead>
+                  <TableHead className="text-right">NW (g)</TableHead>
+                  <TableHead className="text-right">PCS</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.has(index)}
+                        onChange={() => toggleItem(index)}
+                        disabled={item.status !== 'VALID'}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                    </TableCell>
+                    {editingIndex === index ? (
+                      <>
+                        <TableCell>
+                          <Input
+                            value={editValues.code || ''}
+                            onChange={(e) => setEditValues({ ...editValues, code: e.target.value })}
+                            className="h-8"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.001"
+                            value={editValues.grossWeight ?? ''}
+                            onChange={(e) => setEditValues({ ...editValues, grossWeight: parseFloat(e.target.value) })}
+                            className="h-8 text-right"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.001"
+                            value={editValues.stoneWeight ?? ''}
+                            onChange={(e) => setEditValues({ ...editValues, stoneWeight: parseFloat(e.target.value) })}
+                            className="h-8 text-right"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.001"
+                            value={editValues.netWeight ?? ''}
+                            onChange={(e) => setEditValues({ ...editValues, netWeight: parseFloat(e.target.value) })}
+                            className="h-8 text-right"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            value={editValues.pieces ?? ''}
+                            onChange={(e) => setEditValues({ ...editValues, pieces: parseInt(e.target.value) })}
+                            className="h-8 text-right"
+                          />
+                        </TableCell>
+                        <TableCell colSpan={2} className="text-right space-x-2">
+                          <Button size="sm" variant="ghost" onClick={() => saveEdit(index)}>
+                            <Save className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell className="font-mono">{item.code}</TableCell>
+                        <TableCell className="text-right">{item.grossWeight?.toFixed(3)}</TableCell>
+                        <TableCell className="text-right">{item.stoneWeight?.toFixed(3)}</TableCell>
+                        <TableCell className="text-right">{item.netWeight?.toFixed(3)}</TableCell>
+                        <TableCell className="text-right">{item.pieces}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {getStatusBadge(item.status)}
+                            {item.error && <p className="text-xs text-red-600">{item.error}</p>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(index)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => deleteItem(index)}>
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </TableCell>
+                      </>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={handleSubmitClick} disabled={mutation.isPending || selectedItems.size === 0}>
               {mutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Processing...
                 </>
               ) : (
-                `Submit ${selectedValidCount} Items`
+                `Submit ${selectedItems.size} Items`
               )}
             </Button>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Items Table */}
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">Select</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead className="text-right">GW (g)</TableHead>
-                <TableHead className="text-right">SW (g)</TableHead>
-                <TableHead className="text-right">NW (g)</TableHead>
-                <TableHead className="text-right">PCS</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item, index) => {
-                const isEditing = editingIndex === index;
-                const isSelected = selectedItems.has(index);
-
-                if (isEditing) {
-                  return (
-                    <TableRow key={index}>
-                      <TableCell></TableCell>
-                      <TableCell>{getStatusBadge(item.status)}</TableCell>
-                      <TableCell>
-                        <Input
-                          value={editValues.code || ''}
-                          onChange={(e) => setEditValues({ ...editValues, code: e.target.value })}
-                          className="font-mono"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          step="0.001"
-                          value={editValues.grossWeight || ''}
-                          onChange={(e) => setEditValues({ ...editValues, grossWeight: parseFloat(e.target.value) })}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          step="0.001"
-                          value={editValues.stoneWeight || ''}
-                          onChange={(e) => setEditValues({ ...editValues, stoneWeight: parseFloat(e.target.value) })}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          step="0.001"
-                          value={editValues.netWeight || ''}
-                          onChange={(e) => setEditValues({ ...editValues, netWeight: parseFloat(e.target.value) })}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={editValues.pieces || ''}
-                          onChange={(e) => setEditValues({ ...editValues, pieces: parseInt(e.target.value) })}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => saveEdit(index)}>
-                            <Save className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={cancelEdit}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                }
-
-                return (
-                  <TableRow
-                    key={index}
-                    className={item.status === 'VALID' && isSelected ? 'bg-primary/10' : ''}
-                  >
-                    <TableCell>
-                      {item.status === 'VALID' && (
-                        <button onClick={() => toggleItem(index)}>
-                          {isSelected ? (
-                            <CheckCircle2 className="h-5 w-5 text-primary" />
-                          ) : (
-                            <div className="h-5 w-5 rounded border-2 border-muted-foreground" />
-                          )}
-                        </button>
-                      )}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(item.status)}</TableCell>
-                    <TableCell className="font-mono">{item.code}</TableCell>
-                    <TableCell className="text-right">{item.grossWeight?.toFixed(3)}</TableCell>
-                    <TableCell className="text-right">{item.stoneWeight?.toFixed(3)}</TableCell>
-                    <TableCell className="text-right">{item.netWeight?.toFixed(3)}</TableCell>
-                    <TableCell className="text-right">{item.pieces}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {(item.status === 'MISTAKE' || item.status === 'INVALID') && (
-                          <Button size="icon" variant="ghost" onClick={() => startEdit(index)}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button size="icon" variant="ghost" onClick={() => deleteItem(index)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Error Messages */}
-        {items.some((item) => item.error) && (
-          <div className="space-y-2">
-            {items.map(
-              (item, index) =>
-                item.error && (
-                  <div key={index} className="text-sm text-destructive">
-                    {item.code}: {item.error}
-                  </div>
-                )
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Transaction</DialogTitle>
+            <DialogDescription>
+              Please review the transaction details before submitting.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Total Gross Weight</p>
+                <p className="text-2xl font-bold">{totals.totalGW.toFixed(3)}g</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Total Pieces</p>
+                <p className="text-2xl font-bold">{totals.totalPCS}</p>
+              </div>
+            </div>
+            {needsCustomerName && (
+              <div className="space-y-2">
+                <Label htmlFor="customer-name">Customer Name (Optional)</Label>
+                <Input
+                  id="customer-name"
+                  placeholder="Enter customer name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                />
+              </div>
             )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={mutation.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmSubmit} disabled={mutation.isPending}>
+              {mutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Confirm'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

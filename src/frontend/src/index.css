@@ -3,88 +3,94 @@
 @tailwind utilities;
 
 @layer base {
-    :root {
-        --radius: 0.5rem;
-        
-        /* Light mode - Elegant jewellery theme with warm golds and refined neutrals */
-        --background: 0.99 0.005 45;
-        --foreground: 0.20 0.015 45;
-        
-        --card: 1 0 0;
-        --card-foreground: 0.20 0.015 45;
-        
-        --popover: 1 0 0;
-        --popover-foreground: 0.20 0.015 45;
-        
-        --primary: 0.55 0.12 45;
-        --primary-foreground: 0.99 0.005 45;
-        
-        --secondary: 0.96 0.01 45;
-        --secondary-foreground: 0.30 0.02 45;
-        
-        --muted: 0.96 0.01 45;
-        --muted-foreground: 0.50 0.02 45;
-        
-        --accent: 0.95 0.02 45;
-        --accent-foreground: 0.30 0.02 45;
-        
-        --destructive: 0.55 0.22 25;
-        --destructive-foreground: 0.99 0 0;
-        
-        --border: 0.92 0.01 45;
-        --input: 0.92 0.01 45;
-        --ring: 0.55 0.12 45;
-        
-        --chart-1: 0.60 0.15 45;
-        --chart-2: 0.55 0.18 140;
-        --chart-3: 0.50 0.15 260;
-        --chart-4: 0.65 0.12 25;
-        --chart-5: 0.58 0.14 320;
-    }
+  :root {
+    /* Modern vibrant color palette - Coral & Teal theme */
+    --background: oklch(98% 0.01 180);
+    --foreground: oklch(20% 0.02 240);
 
-    .dark {
-        /* Dark mode - Deep navy with gold accents */
-        --background: 0.18 0.02 240;
-        --foreground: 0.95 0.01 45;
-        
-        --card: 0.22 0.025 240;
-        --card-foreground: 0.95 0.01 45;
-        
-        --popover: 0.20 0.025 240;
-        --popover-foreground: 0.95 0.01 45;
-        
-        --primary: 0.65 0.14 45;
-        --primary-foreground: 0.18 0.02 240;
-        
-        --secondary: 0.28 0.03 240;
-        --secondary-foreground: 0.95 0.01 45;
-        
-        --muted: 0.28 0.03 240;
-        --muted-foreground: 0.65 0.02 240;
-        
-        --accent: 0.32 0.04 240;
-        --accent-foreground: 0.95 0.01 45;
-        
-        --destructive: 0.60 0.20 25;
-        --destructive-foreground: 0.18 0.02 240;
-        
-        --border: 0.30 0.03 240;
-        --input: 0.30 0.03 240;
-        --ring: 0.65 0.14 45;
-        
-        --chart-1: 0.65 0.16 45;
-        --chart-2: 0.60 0.18 140;
-        --chart-3: 0.55 0.16 260;
-        --chart-4: 0.70 0.14 25;
-        --chart-5: 0.62 0.15 320;
-    }
+    --card: oklch(100% 0 0);
+    --card-foreground: oklch(20% 0.02 240);
 
-    * {
-        @apply border-border;
-    }
-    
-    body {
-        @apply bg-background text-foreground;
-        font-feature-settings: "rlig" 1, "calt" 1;
-    }
+    --popover: oklch(100% 0 0);
+    --popover-foreground: oklch(20% 0.02 240);
+
+    /* Vibrant coral primary */
+    --primary: oklch(65% 0.22 25);
+    --primary-foreground: oklch(100% 0 0);
+
+    /* Teal secondary */
+    --secondary: oklch(70% 0.15 180);
+    --secondary-foreground: oklch(15% 0.02 180);
+
+    /* Lime accent */
+    --accent: oklch(75% 0.18 130);
+    --accent-foreground: oklch(15% 0.02 130);
+
+    --muted: oklch(96% 0.01 240);
+    --muted-foreground: oklch(50% 0.02 240);
+
+    --destructive: oklch(60% 0.25 25);
+    --destructive-foreground: oklch(100% 0 0);
+
+    --border: oklch(90% 0.01 240);
+    --input: oklch(90% 0.01 240);
+    --ring: oklch(65% 0.22 25);
+
+    --radius: 0.75rem;
+
+    --success: oklch(70% 0.18 145);
+    --success-foreground: oklch(15% 0.02 145);
+
+    --warning: oklch(75% 0.18 70);
+    --warning-foreground: oklch(15% 0.02 70);
+  }
+
+  .dark {
+    --background: oklch(15% 0.02 240);
+    --foreground: oklch(95% 0.01 180);
+
+    --card: oklch(18% 0.02 240);
+    --card-foreground: oklch(95% 0.01 180);
+
+    --popover: oklch(18% 0.02 240);
+    --popover-foreground: oklch(95% 0.01 180);
+
+    /* Vibrant coral primary (adjusted for dark) */
+    --primary: oklch(70% 0.20 25);
+    --primary-foreground: oklch(15% 0.02 240);
+
+    /* Teal secondary (adjusted for dark) */
+    --secondary: oklch(35% 0.10 180);
+    --secondary-foreground: oklch(95% 0.01 180);
+
+    /* Lime accent (adjusted for dark) */
+    --accent: oklch(40% 0.12 130);
+    --accent-foreground: oklch(95% 0.01 130);
+
+    --muted: oklch(25% 0.02 240);
+    --muted-foreground: oklch(65% 0.02 240);
+
+    --destructive: oklch(55% 0.22 25);
+    --destructive-foreground: oklch(95% 0.01 180);
+
+    --border: oklch(30% 0.02 240);
+    --input: oklch(30% 0.02 240);
+    --ring: oklch(70% 0.20 25);
+
+    --success: oklch(65% 0.16 145);
+    --success-foreground: oklch(95% 0.01 180);
+
+    --warning: oklch(70% 0.16 70);
+    --warning-foreground: oklch(15% 0.02 70);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
 }

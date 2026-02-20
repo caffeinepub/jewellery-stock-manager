@@ -1,54 +1,18 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T20:29:27.132Z",
+  "generatedAt": "2026-02-20T07:07:26.093Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 9,
-    "implemented": 8,
+    "total": 14,
+    "implemented": 13,
     "items": [
       {
-        "id": "REQ-36",
-        "summary": "Remove excessive celebration text, titles, and use case explanations from all screens to create a cleaner, more professional UI across Dashboard, Sales, Purchases, Returns, Stock View, Customers, and Factory pages",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/Dashboard.tsx",
-          "frontend/src/pages/Sales.tsx",
-          "frontend/src/pages/Purchases.tsx",
-          "frontend/src/pages/Returns.tsx",
-          "frontend/src/pages/StockView.tsx",
-          "frontend/src/pages/Customers.tsx",
-          "frontend/src/pages/Factory.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/Dashboard.tsx",
-          "frontend/src/pages/Sales.tsx",
-          "frontend/src/pages/Purchases.tsx",
-          "frontend/src/pages/Returns.tsx",
-          "frontend/src/pages/StockView.tsx",
-          "frontend/src/pages/Customers.tsx",
-          "frontend/src/pages/Factory.tsx"
-        ]
-      },
-      {
-        "id": "REQ-37",
-        "summary": "Fix Dashboard analytics calculations in frontend/src/pages/Dashboard.tsx to correctly derive and aggregate values from all four transaction types (Sales, Purchases, Sales Return, Purchase Return) ensuring totals match the sum of individual tab data",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/Dashboard.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/Dashboard.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-38",
-        "summary": "Simplify main Dashboard page layout in frontend/src/pages/Dashboard.tsx by removing duplicate data displays and ensuring charts and tabs below show complementary information rather than repeating the same statistics",
+        "id": "REQ-57",
+        "summary": "Fix Dashboard current stock calculation to accurately match Stock View page by ensuring both locations use the same data source and calculation logic (Total Purchases - Total Sales + Total Sales Return - Total Purchase Return) from backend analytics",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/pages/Dashboard.tsx"
@@ -58,112 +22,203 @@
         ]
       },
       {
-        "id": "REQ-39",
-        "summary": "Redesign Sales and Sales Return 'Make Entry' pages (frontend/src/pages/Sales.tsx and frontend/src/pages/Returns.tsx) to display CODE alphabet groups as colorful chart tabs instead of the current tabbed stock selector interface",
+        "id": "REQ-58",
+        "summary": "Update Stock View page in frontend/src/pages/StockView.tsx to fetch and display only live unsold items from backend, ensuring real-time synchronization with all transaction recordings",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/CodeChartTabs.tsx",
-          "frontend/src/pages/Sales.tsx",
-          "frontend/src/pages/Returns.tsx"
+          "frontend/src/pages/StockView.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/CodeChartTabs.tsx",
-          "frontend/src/pages/Sales.tsx",
-          "frontend/src/pages/Returns.tsx"
+          "frontend/src/pages/StockView.tsx"
         ]
       },
       {
-        "id": "REQ-40",
-        "summary": "Implement drill-down functionality in Sales and Sales Return pages where clicking a CODE chart tab displays only the stock rows matching that specific CODE prefix, with row selection confined within that single tab view",
+        "id": "REQ-59",
+        "summary": "Remove 'Sales' and 'Purchase' badge labels from stock items displayed in Stock View page (frontend/src/pages/StockView.tsx) and other stock listing components",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/CodeChartTabs.tsx",
-          "frontend/src/components/FilteredStockView.tsx",
-          "frontend/src/pages/Sales.tsx",
-          "frontend/src/pages/Returns.tsx"
+          "frontend/src/components/StockTable.tsx",
+          "frontend/src/components/FilteredStockView.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/CodeChartTabs.tsx",
-          "frontend/src/components/FilteredStockView.tsx",
-          "frontend/src/pages/Sales.tsx",
-          "frontend/src/pages/Returns.tsx"
-        ]
-      },
-      {
-        "id": "REQ-41",
-        "summary": "Allow users to navigate between multiple CODE chart tabs, accumulate row selections from each tab, then return to the chart tab overview screen where a 'Record Entry' button finalizes all selected rows as a single batch transaction for Sales or Sales Return",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/FilteredStockView.tsx",
-          "frontend/src/pages/Sales.tsx",
-          "frontend/src/pages/Returns.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/FilteredStockView.tsx",
-          "frontend/src/pages/Sales.tsx",
-          "frontend/src/pages/Returns.tsx"
-        ]
-      },
-      {
-        "id": "REQ-42",
-        "summary": "Update stock filtering logic in Sales, Purchases, Sales Return, and Purchase Return pages to display only current live stock that reflects the state after the most recent transaction, ensuring items already assigned to customers or removed from inventory are excluded from selection",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/CodeChartTabs.tsx",
-          "frontend/src/components/FilteredStockView.tsx",
-          "frontend/src/components/StockSelector.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/CodeChartTabs.tsx",
+          "frontend/src/components/StockTable.tsx",
           "frontend/src/components/FilteredStockView.tsx"
         ]
       },
       {
-        "id": "REQ-43",
-        "summary": "Implement real-time inventory state management in backend/main.mo that updates the current stock immediately after each transaction is recorded, ensuring Sales moves items to customer holdings, Purchases add to total stock, Sales Return restores to total stock, and Purchase Return removes from total stock",
-        "status": "unknown",
-        "plannedFiles": [],
+        "id": "REQ-60",
+        "summary": "Implement click-to-navigate functionality on Dashboard Current Stock section that opens the Stock Tab directly when clicked, using React Router navigation",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/Dashboard.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/Dashboard.tsx"
+        ]
+      },
+      {
+        "id": "REQ-61",
+        "summary": "Add action buttons to Stock View page row selection UI that allow recording selected items as Sales, Sales Return, or Purchase Return transactions directly from the Stock page",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/StockView.tsx",
+          "frontend/src/components/StockTable.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/StockView.tsx",
+          "frontend/src/components/StockTable.tsx"
+        ]
+      },
+      {
+        "id": "REQ-62",
+        "summary": "Update Customer page filtering in frontend/src/pages/Customers.tsx to correctly display sales transactions, return transactions, total gross weight of sales, and total pieces sold for the selected customer",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/Customers.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/Customers.tsx"
+        ]
+      },
+      {
+        "id": "REQ-63",
+        "summary": "Highlight completed sales transactions visually in transaction lists and link them to the customer portal by making customer names clickable navigation links",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/TransactionTotalsView.tsx",
+          "frontend/src/pages/Factory.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/TransactionTotalsView.tsx"
+        ]
+      },
+      {
+        "id": "REQ-64",
+        "summary": "Resize the four CODE prefix tabs under 'Select Items' section in Sales page (frontend/src/pages/Sales.tsx) to display all four tabs simultaneously on iPhone screen width without horizontal scrolling",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/Sales.tsx",
+          "frontend/src/components/CodeChartTabs.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/Sales.tsx",
+          "frontend/src/components/CodeChartTabs.tsx"
+        ]
+      },
+      {
+        "id": "REQ-65",
+        "summary": "Move Upload option above the four CODE prefix tabs in Sales page (frontend/src/pages/Sales.tsx), making it a shared entry point for both barcode scanning and manual entry across all tabs",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/Sales.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/Sales.tsx"
+        ]
+      },
+      {
+        "id": "REQ-66",
+        "summary": "Implement persistent camera permission handling in BarcodeScanner component (frontend/src/components/BarcodeScanner.tsx) that requests permission only once per session and retains permission state across multiple scans",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/BarcodeScanner.tsx"
+        ],
         "matchedFiles": []
       },
       {
-        "id": "REQ-44",
-        "summary": "Optimize transaction recording performance in backend/main.mo and frontend transaction pages to ensure multi-row batch entries across Sales, Purchases, Sales Return, and Purchase Return are processed quickly and instantly without delays",
+        "id": "REQ-67",
+        "summary": "Add report download functionality to Sales, Purchases, Sales Return, Purchase Return, and Stock View pages with export options for PDF and Excel (XLSX) formats",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/TransactionPreview.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/components/ReportDownloader.tsx",
+          "frontend/src/pages/Sales.tsx",
+          "frontend/src/pages/Purchases.tsx",
+          "frontend/src/pages/Returns.tsx",
+          "frontend/src/pages/StockView.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/TransactionPreview.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/components/ReportDownloader.tsx",
+          "frontend/src/pages/Sales.tsx",
+          "frontend/src/pages/Purchases.tsx",
+          "frontend/src/pages/Returns.tsx",
+          "frontend/src/pages/StockView.tsx"
+        ]
+      },
+      {
+        "id": "REQ-68",
+        "summary": "Update StockTable component (frontend/src/components/StockTable.tsx) and FilteredStockView component to enable row selection by clicking anywhere on the row, not just the checkbox, with visual highlighting for selected rows",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/StockTable.tsx",
+          "frontend/src/components/FilteredStockView.tsx",
+          "frontend/src/components/TransactionTotalsView.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/StockTable.tsx",
+          "frontend/src/components/FilteredStockView.tsx",
+          "frontend/src/components/TransactionTotalsView.tsx"
+        ]
+      },
+      {
+        "id": "REQ-69",
+        "summary": "Redesign application color theme with a bold, modern palette featuring clean lines, playful accents, minimal gradients, and high contrast, avoiding blue and purple unless user specifies; update frontend/src/index.css with new CSS custom properties",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/index.css",
+          "frontend/tailwind.config.js"
+        ],
+        "matchedFiles": [
+          "frontend/src/index.css",
+          "frontend/tailwind.config.js"
+        ]
+      },
+      {
+        "id": "REQ-70",
+        "summary": "Apply modern mobile-optimized UI styling across all pages with spacious cards, clear typography, subtle gradients/shadows for depth, smooth transitions, contemporary icons, animations, and generous whitespace",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/Layout.tsx",
+          "frontend/src/pages/Dashboard.tsx",
+          "frontend/src/pages/StockView.tsx",
+          "frontend/src/pages/Sales.tsx",
+          "frontend/src/pages/Customers.tsx",
+          "frontend/src/components/StockTable.tsx",
+          "frontend/src/components/FilteredStockView.tsx",
+          "frontend/src/components/TransactionPreview.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/Layout.tsx",
+          "frontend/src/pages/Dashboard.tsx",
+          "frontend/src/pages/StockView.tsx",
+          "frontend/src/pages/Sales.tsx",
+          "frontend/src/pages/Customers.tsx",
+          "frontend/src/components/StockTable.tsx",
+          "frontend/src/components/FilteredStockView.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/analytics.mo",
     "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
     "frontend/src/components/CodeChartTabs.tsx",
     "frontend/src/components/FilteredStockView.tsx",
-    "frontend/src/components/TransactionPreview.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/components/Layout.tsx",
+    "frontend/src/components/ReportDownloader.tsx",
+    "frontend/src/components/StockTable.tsx",
+    "frontend/src/components/TransactionTotalsView.tsx",
+    "frontend/src/index.css",
     "frontend/src/pages/Customers.tsx",
     "frontend/src/pages/Dashboard.tsx",
-    "frontend/src/pages/Factory.tsx",
     "frontend/src/pages/Purchases.tsx",
     "frontend/src/pages/Returns.tsx",
     "frontend/src/pages/Sales.tsx",
     "frontend/src/pages/StockView.tsx",
+    "frontend/tailwind.config.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

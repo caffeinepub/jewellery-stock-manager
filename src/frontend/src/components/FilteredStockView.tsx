@@ -1,124 +1,133 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, CheckSquare, Square } from 'lucide-react';
+import { useState } from 'react';
 import { JewelleryItem } from '../backend';
-import type { ParsedItem } from '../utils/scannerParser';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ArrowLeft, Plus } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface FilteredStockViewProps {
   items: JewelleryItem[];
   codePrefix: string;
   onBack: () => void;
-  onSelectionComplete: (items: ParsedItem[]) => void;
-  existingSelections: Map<string, ParsedItem>;
+  onAddToSelection: (selectedItems: JewelleryItem[]) => void;
 }
 
 export default function FilteredStockView({
   items,
   codePrefix,
   onBack,
-  onSelectionComplete,
-  existingSelections,
+  onAddToSelection,
 }: FilteredStockViewProps) {
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
 
-  // Initialize with existing selections for this CODE prefix
-  useEffect(() => {
-    const existingCodes = new Set<string>();
-    items.forEach((item) => {
-      if (existingSelections.has(item.code)) {
-        existingCodes.add(item.code);
-      }
-    });
-    setSelectedItems(existingCodes);
-  }, [items, existingSelections]);
+  const handleRowClick = (code: string, event: React.MouseEvent) => {
+    // Don't toggle if clicking on checkbox directly
+    if ((event.target as HTMLElement).closest('button[role="checkbox"]')) {
+      return;
+    }
 
-  const toggleItem = (code: string) => {
-    const newSelected = new Set(selectedItems);
+    const newSelected = new Set(selectedCodes);
     if (newSelected.has(code)) {
       newSelected.delete(code);
     } else {
+      // Check if Ctrl/Cmd key is pressed for multi-select
+      if (!event.ctrlKey && !event.metaKey) {
+        newSelected.clear();
+      }
       newSelected.add(code);
     }
-    setSelectedItems(newSelected);
+    setSelectedCodes(newSelected);
   };
 
-  const handleDone = () => {
-    const selectedStockItems = items.filter((item) => selectedItems.has(item.code));
-    const parsedItems: ParsedItem[] = selectedStockItems.map((item) => ({
-      code: item.code,
-      grossWeight: item.grossWeight,
-      stoneWeight: item.stoneWeight,
-      netWeight: item.netWeight,
-      pieces: Number(item.pieces),
-      status: 'VALID' as const,
-    }));
+  const handleCheckboxChange = (code: string, checked: boolean) => {
+    const newSelected = new Set(selectedCodes);
+    if (checked) {
+      newSelected.add(code);
+    } else {
+      newSelected.delete(code);
+    }
+    setSelectedCodes(newSelected);
+  };
 
-    onSelectionComplete(parsedItems);
+  const handleAddToSelection = () => {
+    const selectedItems = items.filter((item) => selectedCodes.has(item.code));
+    onAddToSelection(selectedItems);
+    setSelectedCodes(new Set());
   };
 
   return (
-    <Card>
+    <Card className="shadow-medium">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={onBack}>
+            <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full">
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <CardTitle>{codePrefix} Items</CardTitle>
+            <CardTitle className="text-xl font-display">
+              {codePrefix} Items ({items.length})
+            </CardTitle>
           </div>
-          {selectedItems.size > 0 && (
-            <Button onClick={handleDone}>
-              Add to Selection ({selectedItems.size})
+          {selectedCodes.size > 0 && (
+            <Button onClick={handleAddToSelection} className="gap-2 shadow-soft">
+              <Plus className="h-4 w-4" />
+              Add {selectedCodes.size} to Selection
             </Button>
           )}
         </div>
       </CardHeader>
       <CardContent>
-        {items.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">No items available</p>
-        ) : (
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
+        <div className="rounded-xl border shadow-soft overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-12"></TableHead>
+                <TableHead className="font-semibold">CODE</TableHead>
+                <TableHead className="text-right font-semibold">GW (g)</TableHead>
+                <TableHead className="text-right font-semibold">SW (g)</TableHead>
+                <TableHead className="text-right font-semibold">NW (g)</TableHead>
+                <TableHead className="text-right font-semibold">PCS</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.length === 0 ? (
                 <TableRow>
-                  <TableHead className="w-12">Select</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead className="text-right">GW (g)</TableHead>
-                  <TableHead className="text-right">SW (g)</TableHead>
-                  <TableHead className="text-right">NW (g)</TableHead>
-                  <TableHead className="text-right">PCS</TableHead>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                    No items found
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item) => {
-                  const isSelected = selectedItems.has(item.code);
+              ) : (
+                items.map((item) => {
+                  const isSelected = selectedCodes.has(item.code);
                   return (
                     <TableRow
                       key={item.code}
-                      className={`cursor-pointer ${isSelected ? 'bg-primary/10' : 'hover:bg-accent'}`}
-                      onClick={() => toggleItem(item.code)}
+                      onClick={(e) => handleRowClick(item.code, e)}
+                      className={`cursor-pointer transition-all duration-200 ${
+                        isSelected
+                          ? 'bg-primary/10 border-l-4 border-l-primary hover:bg-primary/15'
+                          : 'hover:bg-muted/50'
+                      }`}
                     >
                       <TableCell>
-                        {isSelected ? (
-                          <CheckSquare className="h-5 w-5 text-primary" />
-                        ) : (
-                          <Square className="h-5 w-5 text-muted-foreground" />
-                        )}
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleCheckboxChange(item.code, checked as boolean)}
+                          aria-label={`Select ${item.code}`}
+                        />
                       </TableCell>
-                      <TableCell className="font-mono">{item.code}</TableCell>
+                      <TableCell className="font-mono font-medium">{item.code}</TableCell>
                       <TableCell className="text-right">{item.grossWeight.toFixed(3)}</TableCell>
                       <TableCell className="text-right">{item.stoneWeight.toFixed(3)}</TableCell>
                       <TableCell className="text-right">{item.netWeight.toFixed(3)}</TableCell>
                       <TableCell className="text-right">{Number(item.pieces)}</TableCell>
                     </TableRow>
                   );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
