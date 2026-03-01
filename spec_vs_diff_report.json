@@ -1,0 +1,38 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-03-01T21:27:56.922Z",
+  "summary": "The diff implements all three requirements: REQ-1 (fix backend analytics to return real non-zero values), REQ-2 (split Returns card into Purchase Returns and Sales Returns), and REQ-3 (apply correct stock formula on Dashboard and Stock page Summary tab). The backend gains new ItemType variants (purchaseReturn, salesReturn), a migration module, and an updated AnalyticsData type with separate purchase/sales return aggregates. The frontend Dashboard now has 5 cards including separate Purchase Returns and Sales Returns cards, with the correct formula applied to Current Stock. StockView applies the same formula for Net Weight and Pieces. One minor concern: the Stock page Gross Weight uses live stock item sum rather than the analytics formula.",
+  "missing_requirements": [
+    {
+      "id": "REQ-3",
+      "requirement": "Stock page Summary tab Gross Weight matches the formula: Purchases GW minus Sales GW minus Purchase Return GW plus Sales Return GW",
+      "reason": "In StockView.tsx, the Gross Weight summary is computed as a sum of live unsold stock items' grossWeight rather than applying the analytics-based formula. The build request AC explicitly states 'Stock page Summary tab Gross Weight matches the same formula', but the implementation deviates for GW specifically.",
+      "evidence": [
+        "frontend/src/pages/StockView.tsx"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "A dedicated migration module (migration.mo) for transforming old transaction data to new ItemType variants",
+      "reason": "The build request does not request a migration module. It only requires fixing the analytics query and applying the correct formula. Adding a migration.mo file with OldActor/NewActor type mappings was not specified in any requirement.",
+      "evidence": [
+        "backend/migration.mo"
+      ]
+    }
+  ],
+  "confidence": 0.78,
+  "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/TransactionPreview.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/Customers.tsx",
+    "frontend/src/pages/Dashboard.tsx",
+    "frontend/src/pages/Returns.tsx",
+    "frontend/src/pages/StockView.tsx",
+    "project_state.json"
+  ]
+}

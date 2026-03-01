@@ -1,0 +1,65 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Fix Dashboard Zeros, Split Returns Card, and Apply Correct Stock Formula",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Display real, non-zero analytics values on Dashboard cards when transaction data exists",
+      "acceptanceCriteria": [
+        "Dashboard Current Stock card shows non-zero Total Weight and Total Pieces when stock data exists",
+        "Dashboard Sales card shows correct aggregated gross weight and piece count from all sales transactions",
+        "Dashboard Purchases card shows correct aggregated gross weight and piece count from all purchase transactions",
+        "No card displays 0.000g or 0 pieces when underlying transaction records exist"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/Dashboard.tsx",
+          "operation": "modify",
+          "description": "Update the Dashboard component to correctly map and display the analytics data fields returned by the backend. Ensure currentStockNetWeight maps to Total Weight for Current Stock, numberOfPieces maps to Total Pieces for Current Stock, totalWeightSold maps to Sales Total Weight, totalPiecesSold maps to Sales Total Pieces, totalWeightPurchased maps to Purchases Total Weight, and totalPiecesPurchased maps to Purchases Total Pieces. Add loading and error states to handle query failures gracefully."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Split the Returns card into separate Purchase Returns and Sales Returns cards",
+      "acceptanceCriteria": [
+        "Dashboard shows a 'Purchase Returns' card with its own Total Weight and Total Pieces",
+        "Dashboard shows a 'Sales Returns' card with its own Total Weight and Total Pieces",
+        "The original combined 'Returns' card is removed",
+        "Each card's values reflect only its respective return type (purchase vs. sale)"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/Dashboard.tsx",
+          "operation": "modify",
+          "description": "Remove the combined Returns card and add two separate stat cards: Purchase Returns and Sales Returns. Map totalPurchaseReturnWeight to Purchase Returns Total Weight, totalPurchaseReturnPieceCount to Purchase Returns Total Pieces, totalSalesReturnWeight to Sales Returns Total Weight, and totalSalesReturnPieceCount to Sales Returns Total Pieces. Update the card layout to accommodate the additional card (consider a 2x3 or 3x2 grid on larger screens). Ensure each card has a distinct icon and links to the appropriate Returns page filter or view."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Apply the correct stock formula (Purchases − Sales − Purchase Returns + Sales Returns) on Dashboard and Stock page",
+      "acceptanceCriteria": [
+        "Dashboard Current Stock Total Weight equals Purchase GW − Sales GW − Purchase Return GW + Sales Return GW",
+        "Dashboard Current Stock Total Pieces equals Purchase Pieces − Sales Pieces − Purchase Return Pieces + Sales Return Pieces",
+        "Stock page Summary tab Gross Weight matches the same formula",
+        "Stock page Summary tab Net Weight matches the same formula",
+        "Stock page Summary tab Pieces count matches the same formula",
+        "With Purchase GW=9095.500, Sales GW=108.440, Purchase Returns=0, Sales Returns=0, Current Stock GW displays 8987.060"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/Dashboard.tsx",
+          "operation": "modify",
+          "description": "Replace the Current Stock card's display logic to compute Total Weight as (totalWeightPurchased − totalWeightSold − totalPurchaseReturnWeight + totalSalesReturnWeight) and Total Pieces as (totalPiecesPurchased − totalPiecesSold − totalPurchaseReturnPieceCount + totalSalesReturnPieceCount). Format the computed values using the same number formatting logic (e.g., toFixed(3) for weights). Ensure the computed values are displayed instead of currentStockNetWeight and numberOfPieces raw fields."
+        },
+        {
+          "path": "frontend/src/pages/StockView.tsx",
+          "operation": "modify",
+          "description": "Update the Stock page Summary section to compute and display Gross Weight, Net Weight, and Pieces using the formula: Purchases − Sales − Purchase Returns + Sales Returns. Fetch the necessary aggregated transaction totals from the analytics query (totalWeightPurchased, totalWeightSold, totalPurchaseReturnWeight, totalSalesReturnWeight, totalPiecesPurchased, totalPiecesSold, totalPurchaseReturnPieceCount, totalSalesReturnPieceCount). Display the computed Gross Weight and Net Weight with three decimal places and Pieces as an integer. Ensure the summary cards reflect the corrected formula and match the Dashboard Current Stock values."
+        }
+      ]
+    }
+  ]
+}

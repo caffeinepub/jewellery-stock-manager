@@ -1,0 +1,69 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-fix-the-backend-analytics-query-so-that-the-dashboard-page-fetches-and-displays-real-non-zero-values-for-current-stock-sales-purchases-purchase-returns-and-sales-returns-the-dashboard-must-not-show-0-000g-0-pieces-when-actual-transaction-data-exists",
+      "featureTitle": "Fix the backend analytics query so that the Dashboard page fetches and displays real, non-zero values for Current Stock, Sales, Purchases, Purchase Returns, and Sales Returns. The dashboard must not show 0.000g / 0 pieces when actual transaction data exists.",
+      "files": [
+        "frontend/src/pages/Dashboard.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-split-the-single-returns-dashboard-card-into-two-separate-cards-purchase-returns-and-sales-returns-each-showing-their-own-total-weight-and-total-pieces-independently-the-backend-must-supply-separate-aggregated-totals-for-purchase-returns-and-sales-returns",
+      "featureTitle": "Split the single 'Returns' dashboard card into two separate cards: 'Purchase Returns' and 'Sales Returns', each showing their own Total Weight and Total Pieces independently. The backend must supply separate aggregated totals for purchase returns and sales returns.",
+      "files": [
+        "frontend/src/pages/Dashboard.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-apply-the-correct-stock-formula-everywhere-stock-totals-are-computed-on-the-dashboard-current-stock-card-and-on-the-stock-page-summary-tab-for-gross-weight-net-weight-and-pieces-stock-purchases-sales-purchase-returns-sales-returns-the-backend-must-compute-or-expose-aggregates-that-allow-this-formula-to-be-applied",
+      "featureTitle": "Apply the correct stock formula everywhere stock totals are computed — on the Dashboard Current Stock card AND on the Stock page Summary tab — for Gross Weight, Net Weight, and Pieces: Stock = Purchases − Sales − Purchase Returns + Sales Returns. The backend must compute or expose aggregates that allow this formula to be applied.",
+      "files": [
+        "frontend/src/pages/Dashboard.tsx",
+        "frontend/src/pages/StockView.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: oklch(0.98 0.005 240);
+    --foreground: oklch(0.15 0.02 240);
+
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.15 0.02 240);
+
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.15 0.02 240);
+
+    --primary: oklch(0.45 0.18 255);
+    --primary-foreground: oklch(0.98 0.005 255);
+
+    --secondary: oklch(0.94 0.02 240);
+    --secondary-foreground: oklch(0.25 0.04 240);
+
+    --muted: oklch(0.95 0.01 240);
+    --muted-foreground: oklch(0.52 0.03 240);
+
+    --accent: oklch(0.55 0.2 195);
+    --accent-foreground: oklch(0.98 0.005 195);
+
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.98 0.005 25);
+
+    --success: oklch(0.55 0.18 145);
+    --success-foreground: oklch(0.98 0.005 145);
+
+    --warning: oklch(0.72 0.18 75);
+    --warning-foreground: oklch(0.15 0.04 75);
+
+    --border: oklch(0.88 0.01 240);
+    --input: oklch(0.88 0.01 240);
+    --ring: oklch(0.45 0.18 255);
+
+    --radius: 0.5rem;
+
+    --chart-1: oklch(0.45 0.18 255);
+    --chart-2: oklch(0.55 0.2 195);
+    --chart-3: oklch(0.55 0.18 145);
+    --chart-4: oklch(0.72 0.18 75);
+    --chart-5: oklch(0.55 0.22 25);
+
+    --sidebar-background: oklch(0.15 0.03 255);
+    --sidebar-foreground: oklch(0.92 0.01 255);
+    --sidebar-primary: oklch(0.55 0.2 255);
+    --sidebar-primary-foreground: oklch(0.98 0.005 255);
+    --sidebar-accent: oklch(0.22 0.04 255);
+    --sidebar-accent-foreground: oklch(0.92 0.01 255);
+    --sidebar-border: oklch(0.25 0.04 255);
+    --sidebar-ring: oklch(0.55 0.2 255);
+  }
+
+  .dark {
+    --background: oklch(0.12 0.02 255);
+    --foreground: oklch(0.93 0.01 255);
+
+    --card: oklch(0.17 0.025 255);
+    --card-foreground: oklch(0.93 0.01 255);
+
+    --popover: oklch(0.17 0.025 255);
+    --popover-foreground: oklch(0.93 0.01 255);
+
+    --primary: oklch(0.62 0.2 255);
+    --primary-foreground: oklch(0.12 0.02 255);
+
+    --secondary: oklch(0.22 0.03 255);
+    --secondary-foreground: oklch(0.88 0.01 255);
+
+    --muted: oklch(0.22 0.03 255);
+    --muted-foreground: oklch(0.62 0.03 255);
+
+    --accent: oklch(0.55 0.2 195);
+    --accent-foreground: oklch(0.12 0.02 195);
+
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.98 0.005 25);
+
+    --success: oklch(0.55 0.18 145);
+    --success-foreground: oklch(0.98 0.005 145);
+
+    --warning: oklch(0.72 0.18 75);
+    --warning-foreground: oklch(0.15 0.04 75);
+
+    --border: oklch(0.28 0.03 255);
+    --input: oklch(0.28 0.03 255);
+    --ring: oklch(0.62 0.2 255);
+
+    --chart-1: oklch(0.62 0.2 255);
+    --chart-2: oklch(0.62 0.2 195);
+    --chart-3: oklch(0.62 0.18 145);
+    --chart-4: oklch(0.75 0.18 75);
+    --chart-5: oklch(0.62 0.22 25);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Sora', sans-serif;
+  }
+}
+
+/* Dialog overlay — ensure it covers sticky bars and all fixed elements */
+[data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+  z-index: 150 !important;
+}
+
+[data-radix-dialog-content] {
+  z-index: 200 !important;
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.75 0.02 240);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.62 0.04 240);
+}

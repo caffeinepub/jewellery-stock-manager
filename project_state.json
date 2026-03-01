@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "Inventory management app with dashboard stats, stock tracking, and purchase/sales/returns management. Key fix: dashboard cards showing zeros and stock summary values incorrect.",
+  "architectural_notes": [
+    "Stock formula: Stock = Purchases − Sales − Purchase Returns + Sales Returns (applies to Gross Weight, Net Weight, and Pieces)"
+  ],
+  "known_issues": [
+    "Dashboard cards displaying 0 for all stats (Current Stock, Sales, Purchases, Returns)",
+    "Stock page Summary tab showing incorrect values not matching the stock formula"
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-fix-the-backend-analytics-query-so-that-the-dashboard-page-fetches-and-displays-real-non-zero-values-for-current-stock-sales-purchases-purchase-returns-and-sales-returns-the-dashboard-must-not-show-0-000g-0-pieces-when-actual-transaction-data-exists",
+      "title": "Fix the backend analytics query so that the Dashboard page fetches and displays real, non-zero values for Current Stock, Sales, Purchases, Purchase Returns, and Sales Returns. The dashboard must not show 0.000g / 0 pieces when actual transaction data exists.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-split-the-single-returns-dashboard-card-into-two-separate-cards-purchase-returns-and-sales-returns-each-showing-their-own-total-weight-and-total-pieces-independently-the-backend-must-supply-separate-aggregated-totals-for-purchase-returns-and-sales-returns",
+      "title": "Split the single 'Returns' dashboard card into two separate cards: 'Purchase Returns' and 'Sales Returns', each showing their own Total Weight and Total Pieces independently. The backend must supply separate aggregated totals for purchase returns and sales returns.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-apply-the-correct-stock-formula-everywhere-stock-totals-are-computed-on-the-dashboard-current-stock-card-and-on-the-stock-page-summary-tab-for-gross-weight-net-weight-and-pieces-stock-purchases-sales-purchase-returns-sales-returns-the-backend-must-compute-or-expose-aggregates-that-allow-this-formula-to-be-applied",
+      "title": "Apply the correct stock formula everywhere stock totals are computed — on the Dashboard Current Stock card AND on the Stock page Summary tab — for Gross Weight, Net Weight, and Pieces: Stock = Purchases − Sales − Purchase Returns + Sales Returns. The backend must compute or expose aggregates that allow this formula to be applied.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Fix dashboard cards showing all zeros - fetch real values for Current Stock, Sales, Purchases, Purchase Returns, Sales Returns",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Split Returns dashboard card into separate Purchase Returns and Sales Returns cards",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Fix Stock page Summary tab to use correct formula (Stock = Purchases - Sales - Purchase Returns + Sales Returns) for Gross Weight, Net Weight, and Pieces",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "JewelTrack",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

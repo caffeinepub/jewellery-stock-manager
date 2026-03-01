@@ -1,0 +1,89 @@
+{
+  "kind": "build_request",
+  "title": "Fix dashboard zeros, split Returns card, and fix Stock Summary formula",
+  "projectName": "JewelTrack",
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Fix the backend analytics query so that the Dashboard page fetches and displays real, non-zero values for Current Stock, Sales, Purchases, Purchase Returns, and Sales Returns. The dashboard must not show 0.000g / 0 pieces when actual transaction data exists.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-1",
+          "msg-6",
+          "msg-10"
+        ],
+        "quotes": [
+          "Why is dashboard not displaying right values and just showing 0.",
+          "Dashboard showing zeros — Fix data fetching so Current Stock, Sales, Purchases, and Returns cards display real values"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Dashboard Current Stock card shows non-zero Total Weight and Total Pieces when stock data exists",
+        "Dashboard Sales card shows correct aggregated gross weight and piece count from all sales transactions",
+        "Dashboard Purchases card shows correct aggregated gross weight and piece count from all purchase transactions",
+        "No card displays 0.000g or 0 pieces when underlying transaction records exist"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Split the single 'Returns' dashboard card into two separate cards: 'Purchase Returns' and 'Sales Returns', each showing their own Total Weight and Total Pieces independently. The backend must supply separate aggregated totals for purchase returns and sales returns.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-6",
+          "msg-8"
+        ],
+        "quotes": [
+          "Split into seperate",
+          "Returns card — Split into two separate cards: Purchase Returns and Sales Returns (each showing Total Weight and Total Pieces)"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Dashboard shows a 'Purchase Returns' card with its own Total Weight and Total Pieces",
+        "Dashboard shows a 'Sales Returns' card with its own Total Weight and Total Pieces",
+        "The original combined 'Returns' card is removed",
+        "Each card's values reflect only its respective return type (purchase vs. sale)"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Apply the correct stock formula everywhere stock totals are computed — on the Dashboard Current Stock card AND on the Stock page Summary tab — for Gross Weight, Net Weight, and Pieces: Stock = Purchases − Sales − Purchase Returns + Sales Returns. The backend must compute or expose aggregates that allow this formula to be applied.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-4",
+          "msg-6",
+          "msg-8"
+        ],
+        "quotes": [
+          "stock should PURCHASE-SALES-PURCHASE RETURN+SALES RETURN",
+          "Stock = Purchases − Sales − Purchase Returns + Sales Returns",
+          "Yes, for peices, net weight everything"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Dashboard Current Stock Total Weight equals Purchase GW − Sales GW − Purchase Return GW + Sales Return GW",
+        "Dashboard Current Stock Total Pieces equals Purchase Pieces − Sales Pieces − Purchase Return Pieces + Sales Return Pieces",
+        "Stock page Summary tab Gross Weight matches the same formula",
+        "Stock page Summary tab Net Weight matches the same formula",
+        "Stock page Summary tab Pieces count matches the same formula",
+        "With Purchase GW=9095.500, Sales GW=108.440, Purchase Returns=0, Sales Returns=0, Current Stock GW displays 8987.060"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not change the existing transaction data model or item schema",
+    "Immutable frontend paths (hooks, main.tsx, ui components) must not be modified"
+  ],
+  "nonGoals": [
+    "Redesigning the overall dashboard layout or visual theme",
+    "Adding new transaction types beyond the existing purchase, sales, purchase returns, and sales returns",
+    "Changes to the Customers or Factory pages"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}
