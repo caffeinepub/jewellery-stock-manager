@@ -1,10 +1,17 @@
-import { useFactoryLedger } from '../hooks/useQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Factory as FactoryIcon } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { format } from "date-fns";
+import { Factory as FactoryIcon } from "lucide-react";
+import { useFactoryLedger } from "../hooks/useQueries";
 
 export default function Factory() {
   const { data: transactions, isLoading } = useFactoryLedger();
@@ -14,13 +21,16 @@ export default function Factory() {
         count: transactions.length,
         totalGW: transactions.reduce((sum, t) => sum + t.item.grossWeight, 0),
         totalNW: transactions.reduce((sum, t) => sum + t.item.netWeight, 0),
-        totalPCS: transactions.reduce((sum, t) => sum + Number(t.item.pieces), 0),
+        totalPCS: transactions.reduce(
+          (sum, t) => sum + Number(t.item.pieces),
+          0,
+        ),
       }
     : { count: 0, totalGW: 0, totalNW: 0, totalPCS: 0 };
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-16 z-40 bg-background pb-4 border-b">
+      <div className="mb-4 border-b pb-4">
         <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <FactoryIcon className="h-8 w-8 text-indigo-600" />
           Factory
@@ -42,7 +52,9 @@ export default function Factory() {
             <CardTitle className="text-sm font-medium">Total GW</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totals.totalGW.toFixed(2)}g</div>
+            <div className="text-2xl font-bold">
+              {totals.totalGW.toFixed(2)}g
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -50,7 +62,9 @@ export default function Factory() {
             <CardTitle className="text-sm font-medium">Total NW</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totals.totalNW.toFixed(2)}g</div>
+            <div className="text-2xl font-bold">
+              {totals.totalNW.toFixed(2)}g
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -72,6 +86,7 @@ export default function Factory() {
           {isLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no meaningful key
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
@@ -91,7 +106,10 @@ export default function Factory() {
                 <TableBody>
                   {!transactions || transactions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell
+                        colSpan={6}
+                        className="text-center text-muted-foreground py-8"
+                      >
                         No transactions yet
                       </TableCell>
                     </TableRow>
@@ -99,17 +117,36 @@ export default function Factory() {
                     transactions.map((transaction) => (
                       <TableRow key={Number(transaction.id)}>
                         <TableCell>
-                          {format(new Date(Number(transaction.timestamp) / 1000000), 'PPp')}
+                          {format(
+                            new Date(Number(transaction.timestamp) / 1000000),
+                            "PPp",
+                          )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={transaction.transactionType === 'purchase' ? 'default' : 'outline'}>
-                            {transaction.transactionType === 'purchase' ? 'Purchase' : 'Return'}
+                          <Badge
+                            variant={
+                              transaction.transactionType === "purchase"
+                                ? "default"
+                                : "outline"
+                            }
+                          >
+                            {transaction.transactionType === "purchase"
+                              ? "Purchase"
+                              : "Return"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-mono">{transaction.item.code}</TableCell>
-                        <TableCell className="text-right">{transaction.item.grossWeight.toFixed(3)}</TableCell>
-                        <TableCell className="text-right">{transaction.item.netWeight.toFixed(3)}</TableCell>
-                        <TableCell className="text-right">{Number(transaction.item.pieces)}</TableCell>
+                        <TableCell className="font-mono">
+                          {transaction.item.code}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {transaction.item.grossWeight.toFixed(3)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {transaction.item.netWeight.toFixed(3)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {Number(transaction.item.pieces)}
+                        </TableCell>
                       </TableRow>
                     ))
                   )}

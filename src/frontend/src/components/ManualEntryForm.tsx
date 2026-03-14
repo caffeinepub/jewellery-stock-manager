@@ -1,135 +1,159 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Plus } from 'lucide-react';
-import { toast } from 'sonner';
-import type { ParsedItem } from '../utils/scannerParser';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { AlertCircle, Plus } from "lucide-react";
+import { useState } from "react";
+import type { ParsedItem } from "../utils/scannerParser";
 
 interface ManualEntryFormProps {
-  onEntryAdded: (item: ParsedItem) => void;
+  onItemAdded: (item: ParsedItem) => void;
 }
 
-export default function ManualEntryForm({ onEntryAdded }: ManualEntryFormProps) {
-  const [code, setCode] = useState('');
-  const [gw, setGw] = useState('');
-  const [sw, setSw] = useState('');
-  const [nw, setNw] = useState('');
-  const [pcs, setPcs] = useState('');
+export default function ManualEntryForm({ onItemAdded }: ManualEntryFormProps) {
+  const [code, setCode] = useState("");
+  const [grossWeight, setGrossWeight] = useState("");
+  const [stoneWeight, setStoneWeight] = useState("");
+  const [netWeight, setNetWeight] = useState("");
+  const [pieces, setPieces] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
-    const grossWeight = parseFloat(gw);
-    const stoneWeight = parseFloat(sw);
-    const netWeight = parseFloat(nw);
-    const pieces = parseInt(pcs, 10);
-
-    // Validation
     if (!code.trim()) {
-      toast.error('CODE is required');
+      setError("Code is required.");
       return;
     }
 
-    if (isNaN(grossWeight) || isNaN(stoneWeight) || isNaN(netWeight) || isNaN(pieces)) {
-      toast.error('All weight and piece values must be valid numbers');
+    const gw = Number.parseFloat(grossWeight);
+    const sw = Number.parseFloat(stoneWeight) || 0;
+    const nw = Number.parseFloat(netWeight);
+    const pcs = Number.parseInt(pieces) || 1;
+
+    if (Number.isNaN(gw) || gw <= 0) {
+      setError("Gross weight must be a positive number.");
       return;
     }
-
-    if (grossWeight < 0 || stoneWeight < 0 || netWeight < 0 || pieces < 0) {
-      toast.error('Values cannot be negative');
+    if (Number.isNaN(nw) || nw <= 0) {
+      setError("Net weight must be a positive number.");
       return;
     }
-
-    // Validate GW = SW + NW equation (with tolerance)
-    const tolerance = 0.01;
-    const calculatedGW = stoneWeight + netWeight;
-    const isValid = Math.abs(grossWeight - calculatedGW) <= tolerance;
+    if (nw > gw) {
+      setError("Net weight cannot exceed gross weight.");
+      return;
+    }
 
     const item: ParsedItem = {
-      code: code.trim(),
-      grossWeight,
-      stoneWeight,
-      netWeight,
-      pieces,
-      status: isValid ? 'VALID' : 'MISTAKE',
-      error: isValid ? undefined : `GW (${grossWeight.toFixed(3)}) ≠ SW + NW (${calculatedGW.toFixed(3)})`,
+      code: code.trim().toUpperCase(),
+      grossWeight: gw,
+      stoneWeight: sw,
+      netWeight: nw,
+      pieces: pcs,
+      status: "VALID",
     };
 
-    onEntryAdded(item);
-    toast.success('Item added to preview');
-
-    // Reset form
-    setCode('');
-    setGw('');
-    setSw('');
-    setNw('');
-    setPcs('');
+    onItemAdded(item);
+    setCode("");
+    setGrossWeight("");
+    setStoneWeight("");
+    setNetWeight("");
+    setPieces("");
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-5">
-        <div className="space-y-2">
-          <Label htmlFor="code">CODE</Label>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1.5">
+          <Label
+            htmlFor="code"
+            className="text-xs font-semibold text-foreground uppercase tracking-wide"
+          >
+            Code
+          </Label>
           <Input
             id="code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="e.g., NKST-1170"
-            required
+            placeholder="e.g. ABC123"
+            className="font-mono uppercase"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="gw">GW (g)</Label>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="gw"
+            className="text-xs font-semibold text-foreground uppercase tracking-wide"
+          >
+            Gross Weight (g)
+          </Label>
           <Input
             id="gw"
             type="number"
             step="0.001"
-            value={gw}
-            onChange={(e) => setGw(e.target.value)}
+            value={grossWeight}
+            onChange={(e) => setGrossWeight(e.target.value)}
             placeholder="0.000"
-            required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="sw">SW (g)</Label>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="sw"
+            className="text-xs font-semibold text-foreground uppercase tracking-wide"
+          >
+            Stone Weight (g)
+          </Label>
           <Input
             id="sw"
             type="number"
             step="0.001"
-            value={sw}
-            onChange={(e) => setSw(e.target.value)}
+            value={stoneWeight}
+            onChange={(e) => setStoneWeight(e.target.value)}
             placeholder="0.000"
-            required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="nw">NW (g)</Label>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="nw"
+            className="text-xs font-semibold text-foreground uppercase tracking-wide"
+          >
+            Net Weight (g)
+          </Label>
           <Input
             id="nw"
             type="number"
             step="0.001"
-            value={nw}
-            onChange={(e) => setNw(e.target.value)}
+            value={netWeight}
+            onChange={(e) => setNetWeight(e.target.value)}
             placeholder="0.000"
-            required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="pcs">PCS</Label>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="pcs"
+            className="text-xs font-semibold text-foreground uppercase tracking-wide"
+          >
+            Pieces
+          </Label>
           <Input
             id="pcs"
             type="number"
-            value={pcs}
-            onChange={(e) => setPcs(e.target.value)}
+            min="1"
+            value={pieces}
+            onChange={(e) => setPieces(e.target.value)}
             placeholder="1"
-            required
           />
         </div>
       </div>
-      <Button type="submit" className="w-full md:w-auto">
-        <Plus className="mr-2 h-4 w-4" />
+
+      {error && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+          <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+
+      <Button type="submit" className="w-full gap-2">
+        <Plus className="w-4 h-4" />
         Add Item
       </Button>
     </form>

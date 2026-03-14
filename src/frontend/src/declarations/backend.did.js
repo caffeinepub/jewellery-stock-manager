@@ -20,14 +20,23 @@ export const _CaffeineStorageRefillResult = IDL.Record({
   'topped_up_amount' : IDL.Opt(IDL.Nat),
 });
 export const ItemType = IDL.Variant({
+  'salesReturn' : IDL.Null,
   'sale' : IDL.Null,
+  'purchaseReturn' : IDL.Null,
   'purchase' : IDL.Null,
-  'returned' : IDL.Null,
 });
 export const TransactionInput = IDL.Record({
+  'customerName' : IDL.Opt(IDL.Text),
+  'transactionCode' : IDL.Text,
   'transactionType' : ItemType,
+  'metalPurity' : IDL.Opt(IDL.Float64),
   'code' : IDL.Text,
+  'netWeight' : IDL.Float64,
+  'cashBalance' : IDL.Opt(IDL.Float64),
   'timestamp' : IDL.Int,
+  'quantity' : IDL.Nat,
+  'stoneChargePerGram' : IDL.Opt(IDL.Float64),
+  'metalBalance' : IDL.Opt(IDL.Float64),
 });
 export const JewelleryItem = IDL.Record({
   'code' : IDL.Text,
@@ -40,21 +49,32 @@ export const JewelleryItem = IDL.Record({
 });
 export const TransactionRecord = IDL.Record({
   'id' : IDL.Nat,
+  'customerName' : IDL.Opt(IDL.Text),
+  'transactionCode' : IDL.Text,
   'transactionType' : ItemType,
+  'metalPurity' : IDL.Opt(IDL.Float64),
+  'netWeight' : IDL.Float64,
   'item' : JewelleryItem,
+  'cashBalance' : IDL.Opt(IDL.Float64),
   'timestamp' : IDL.Int,
+  'quantity' : IDL.Nat,
+  'stoneChargePerGram' : IDL.Opt(IDL.Float64),
+  'metalBalance' : IDL.Opt(IDL.Float64),
 });
 export const Customer = IDL.Record({
   'currentHoldings' : IDL.Vec(JewelleryItem),
   'name' : IDL.Text,
   'transactionHistory' : IDL.Vec(TransactionRecord),
 });
+export const TransactionAggregate = IDL.Record({
+  'totalPieces' : IDL.Nat,
+  'totalWeight' : IDL.Float64,
+});
 export const AnalyticsData = IDL.Record({
-  'totalInventoryValue' : IDL.Float64,
-  'returnCount' : IDL.Nat,
-  'numberOfPieces' : IDL.Nat,
-  'purchaseCount' : IDL.Nat,
-  'salesCount' : IDL.Nat,
+  'salesAggregate' : TransactionAggregate,
+  'purchaseAggregate' : TransactionAggregate,
+  'salesReturnAggregate' : TransactionAggregate,
+  'purchaseReturnAggregate' : TransactionAggregate,
 });
 
 export const idlService = IDL.Service({
@@ -110,13 +130,28 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
-  'addTransaction' : IDL.Func([IDL.Text, ItemType, IDL.Int], [IDL.Text], []),
+  'addTransaction' : IDL.Func(
+      [
+        IDL.Text,
+        ItemType,
+        IDL.Int,
+        IDL.Opt(IDL.Text),
+        IDL.Nat,
+        IDL.Float64,
+        IDL.Text,
+        IDL.Opt(IDL.Float64),
+        IDL.Opt(IDL.Float64),
+        IDL.Opt(IDL.Float64),
+        IDL.Opt(IDL.Float64),
+      ],
+      [IDL.Text],
+      [],
+    ),
   'createCustomer' : IDL.Func([IDL.Text], [], []),
   'deleteCustomer' : IDL.Func([IDL.Text], [], []),
   'getAllCustomers' : IDL.Func([], [IDL.Vec(Customer)], ['query']),
   'getAllItems' : IDL.Func([], [IDL.Vec(JewelleryItem)], ['query']),
   'getAllTransactions' : IDL.Func([], [IDL.Vec(TransactionRecord)], ['query']),
-  'getAnalyticsData' : IDL.Func([], [AnalyticsData], ['query']),
   'getAvailableItemsByType' : IDL.Func(
       [ItemType],
       [IDL.Vec(JewelleryItem)],
@@ -124,16 +159,9 @@ export const idlService = IDL.Service({
     ),
   'getCustomer' : IDL.Func([IDL.Text], [IDL.Opt(Customer)], ['query']),
   'getItem' : IDL.Func([IDL.Text], [IDL.Opt(JewelleryItem)], ['query']),
-  'getTransaction' : IDL.Func(
-      [IDL.Nat],
-      [IDL.Opt(TransactionRecord)],
-      ['query'],
-    ),
-  'getTransactionsByType' : IDL.Func(
-      [ItemType],
-      [IDL.Vec(TransactionRecord)],
-      ['query'],
-    ),
+  'getTypeAggregates' : IDL.Func([], [AnalyticsData], ['query']),
+  'renameCustomer' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'resetAllData' : IDL.Func([], [], []),
   'updateCustomer' : IDL.Func(
       [IDL.Text, TransactionRecord, JewelleryItem],
       [],
@@ -156,14 +184,23 @@ export const idlFactory = ({ IDL }) => {
     'topped_up_amount' : IDL.Opt(IDL.Nat),
   });
   const ItemType = IDL.Variant({
+    'salesReturn' : IDL.Null,
     'sale' : IDL.Null,
+    'purchaseReturn' : IDL.Null,
     'purchase' : IDL.Null,
-    'returned' : IDL.Null,
   });
   const TransactionInput = IDL.Record({
+    'customerName' : IDL.Opt(IDL.Text),
+    'transactionCode' : IDL.Text,
     'transactionType' : ItemType,
+    'metalPurity' : IDL.Opt(IDL.Float64),
     'code' : IDL.Text,
+    'netWeight' : IDL.Float64,
+    'cashBalance' : IDL.Opt(IDL.Float64),
     'timestamp' : IDL.Int,
+    'quantity' : IDL.Nat,
+    'stoneChargePerGram' : IDL.Opt(IDL.Float64),
+    'metalBalance' : IDL.Opt(IDL.Float64),
   });
   const JewelleryItem = IDL.Record({
     'code' : IDL.Text,
@@ -176,21 +213,32 @@ export const idlFactory = ({ IDL }) => {
   });
   const TransactionRecord = IDL.Record({
     'id' : IDL.Nat,
+    'customerName' : IDL.Opt(IDL.Text),
+    'transactionCode' : IDL.Text,
     'transactionType' : ItemType,
+    'metalPurity' : IDL.Opt(IDL.Float64),
+    'netWeight' : IDL.Float64,
     'item' : JewelleryItem,
+    'cashBalance' : IDL.Opt(IDL.Float64),
     'timestamp' : IDL.Int,
+    'quantity' : IDL.Nat,
+    'stoneChargePerGram' : IDL.Opt(IDL.Float64),
+    'metalBalance' : IDL.Opt(IDL.Float64),
   });
   const Customer = IDL.Record({
     'currentHoldings' : IDL.Vec(JewelleryItem),
     'name' : IDL.Text,
     'transactionHistory' : IDL.Vec(TransactionRecord),
   });
+  const TransactionAggregate = IDL.Record({
+    'totalPieces' : IDL.Nat,
+    'totalWeight' : IDL.Float64,
+  });
   const AnalyticsData = IDL.Record({
-    'totalInventoryValue' : IDL.Float64,
-    'returnCount' : IDL.Nat,
-    'numberOfPieces' : IDL.Nat,
-    'purchaseCount' : IDL.Nat,
-    'salesCount' : IDL.Nat,
+    'salesAggregate' : TransactionAggregate,
+    'purchaseAggregate' : TransactionAggregate,
+    'salesReturnAggregate' : TransactionAggregate,
+    'purchaseReturnAggregate' : TransactionAggregate,
   });
   
   return IDL.Service({
@@ -246,7 +294,23 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
-    'addTransaction' : IDL.Func([IDL.Text, ItemType, IDL.Int], [IDL.Text], []),
+    'addTransaction' : IDL.Func(
+        [
+          IDL.Text,
+          ItemType,
+          IDL.Int,
+          IDL.Opt(IDL.Text),
+          IDL.Nat,
+          IDL.Float64,
+          IDL.Text,
+          IDL.Opt(IDL.Float64),
+          IDL.Opt(IDL.Float64),
+          IDL.Opt(IDL.Float64),
+          IDL.Opt(IDL.Float64),
+        ],
+        [IDL.Text],
+        [],
+      ),
     'createCustomer' : IDL.Func([IDL.Text], [], []),
     'deleteCustomer' : IDL.Func([IDL.Text], [], []),
     'getAllCustomers' : IDL.Func([], [IDL.Vec(Customer)], ['query']),
@@ -256,7 +320,6 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(TransactionRecord)],
         ['query'],
       ),
-    'getAnalyticsData' : IDL.Func([], [AnalyticsData], ['query']),
     'getAvailableItemsByType' : IDL.Func(
         [ItemType],
         [IDL.Vec(JewelleryItem)],
@@ -264,16 +327,9 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getCustomer' : IDL.Func([IDL.Text], [IDL.Opt(Customer)], ['query']),
     'getItem' : IDL.Func([IDL.Text], [IDL.Opt(JewelleryItem)], ['query']),
-    'getTransaction' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Opt(TransactionRecord)],
-        ['query'],
-      ),
-    'getTransactionsByType' : IDL.Func(
-        [ItemType],
-        [IDL.Vec(TransactionRecord)],
-        ['query'],
-      ),
+    'getTypeAggregates' : IDL.Func([], [AnalyticsData], ['query']),
+    'renameCustomer' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'resetAllData' : IDL.Func([], [], []),
     'updateCustomer' : IDL.Func(
         [IDL.Text, TransactionRecord, JewelleryItem],
         [],

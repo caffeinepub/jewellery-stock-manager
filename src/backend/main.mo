@@ -1,20 +1,24 @@
 import Float "mo:core/Float";
 import Text "mo:core/Text";
-import Array "mo:core/Array";
-import Map "mo:core/Map";
 import Nat "mo:core/Nat";
+import Map "mo:core/Map";
 import Iter "mo:core/Iter";
+import Array "mo:core/Array";
 import Order "mo:core/Order";
-import Time "mo:core/Time";
+
 import MixinStorage "blob-storage/Mixin";
-import Analytics "analytics";
 
 actor {
   include MixinStorage();
 
-  // Type Definitions
+  public type ItemType = {
+    #sale;
+    #purchase;
+    #purchaseReturn;
+    #salesReturn;
+  };
 
-  type JewelleryItem = {
+  public type JewelleryItem = {
     code : Text;
     grossWeight : Float;
     stoneWeight : Float;
@@ -24,46 +28,57 @@ actor {
     isSold : Bool;
   };
 
-  type ItemType = {
-    #sale;
-    #purchase;
-    #returned;
-  };
-
-  type TransactionRecord = {
+  public type TransactionRecord = {
     id : Nat;
     item : JewelleryItem;
     transactionType : ItemType;
     timestamp : Int;
+    customerName : ?Text;
+    quantity : Nat;
+    netWeight : Float;
+    transactionCode : Text;
+    metalPurity : ?Float;
+    metalBalance : ?Float;
+    stoneChargePerGram : ?Float;
+    cashBalance : ?Float;
   };
 
-  type Customer = {
+  public type Customer = {
     name : Text;
     transactionHistory : [TransactionRecord];
     currentHoldings : [JewelleryItem];
   };
 
-  // New TransactionInput type for succinct data representation
-  type TransactionInput = {
+  public type TransactionInput = {
     code : Text;
     transactionType : ItemType;
     timestamp : Int;
+    customerName : ?Text;
+    quantity : Nat;
+    netWeight : Float;
+    transactionCode : Text;
+    metalPurity : ?Float;
+    metalBalance : ?Float;
+    stoneChargePerGram : ?Float;
+    cashBalance : ?Float;
   };
 
-  var nextTransactionId = 1;
+  public type TransactionAggregate = {
+    totalWeight : Float;
+    totalPieces : Nat;
+  };
 
-  // Persistent Store
+  public type AnalyticsData = {
+    salesAggregate : TransactionAggregate;
+    purchaseAggregate : TransactionAggregate;
+    salesReturnAggregate : TransactionAggregate;
+    purchaseReturnAggregate : TransactionAggregate;
+  };
+
   let items = Map.empty<Text, JewelleryItem>();
   let transactions = Map.empty<Nat, TransactionRecord>();
   let customers = Map.empty<Text, Customer>();
-
-  type AnalyticsData = {
-    totalInventoryValue : Float;
-    numberOfPieces : Nat;
-    salesCount : Nat;
-    purchaseCount : Nat;
-    returnCount : Nat;
-  };
+  var nextTransactionId = 1;
 
   module JewelleryItem {
     public func compare(a : JewelleryItem, b : JewelleryItem) : Order.Order {
@@ -100,7 +115,6 @@ actor {
       itemType;
       isSold = false;
     };
-
     items.add(code, item);
   };
 
@@ -123,6 +137,14 @@ actor {
     code : Text,
     transactionType : ItemType,
     timestamp : Int,
+    customerName : ?Text,
+    quantity : Nat,
+    netWeight : Float,
+    transactionCode : Text,
+    metalPurity : ?Float,
+    metalBalance : ?Float,
+    stoneChargePerGram : ?Float,
+    cashBalance : ?Float,
   ) : async Text {
     switch (items.get(code)) {
       case (null) { "Item not found" };
@@ -142,20 +164,66 @@ actor {
           item = updatedItem;
           transactionType;
           timestamp;
+          customerName;
+          quantity;
+          netWeight;
+          transactionCode;
+          metalPurity;
+          metalBalance;
+          stoneChargePerGram;
+          cashBalance;
         };
 
         items.add(code, updatedItem);
         transactions.add(nextTransactionId, record);
         nextTransactionId += 1;
+
+        switch (customerName, transactionType) {
+          case (?name, #sale) {
+            switch (customers.get(name)) {
+              case (null) {
+                let newCustomer : Customer = {
+                  name;
+                  transactionHistory = [record];
+                  currentHoldings = [updatedItem];
+                };
+                customers.add(name, newCustomer);
+              };
+              case (?customer) {
+                let updatedCustomer : Customer = {
+                  name;
+                  transactionHistory = customer.transactionHistory.concat([record]);
+                  currentHoldings = customer.currentHoldings.concat([updatedItem]);
+                };
+                customers.add(name, updatedCustomer);
+              };
+            };
+          };
+          case (_, _) {};
+        };
+
         "Transaction successful";
       };
     };
   };
 
+  // Batch transactions with extended fields
   public shared ({ caller }) func addBatchTransactions(transactionsArray : [TransactionInput]) : async [Text] {
     var results : [Text] = [];
     for (transaction in transactionsArray.values()) {
-      let result = await addTransaction(transaction.code, transaction.transactionType, transaction.timestamp);
+      let result = await addTransaction(
+        transaction.code,
+        transaction.transactionType,
+        transaction.timestamp,
+        transaction.customerName,
+        transaction.quantity,
+        transaction.netWeight,
+        transaction.transactionCode,
+        transaction.metalPurity,
+        transaction.metalBalance,
+        transaction.stoneChargePerGram,
+        transaction.cashBalance,
+      );
       results := results.concat([result]);
     };
     results;
@@ -182,24 +250,6 @@ actor {
     transactions.values().toArray().sort();
   };
 
-  public query ({ caller }) func getTransactionsByType(transactionType : ItemType) : async [TransactionRecord] {
-    let filteredArray = transactions.values().toArray().filter(
-      func(record) {
-        record.transactionType == transactionType;
-      }
-    );
-    filteredArray.sort();
-  };
-
-  public query ({ caller }) func getTransaction(id : Nat) : async ?TransactionRecord {
-    transactions.get(id);
-  };
-
-  // Cross-Module Analytics Call
-  public query ({ caller }) func getAnalyticsData() : async AnalyticsData {
-    Analytics.calculateAnalytics(items, customers);
-  };
-
   public shared ({ caller }) func createCustomer(name : Text) : async () {
     let customer : Customer = {
       name;
@@ -213,7 +263,11 @@ actor {
     customers.get(name);
   };
 
-  public shared ({ caller }) func updateCustomer(name : Text, newTransaction : TransactionRecord, newItem : JewelleryItem) : async () {
+  public shared ({ caller }) func updateCustomer(
+    name : Text,
+    newTransaction : TransactionRecord,
+    newItem : JewelleryItem,
+  ) : async () {
     switch (customers.get(name)) {
       case (null) {};
       case (?customer) {
@@ -233,5 +287,80 @@ actor {
 
   public query ({ caller }) func getAllCustomers() : async [Customer] {
     customers.values().toArray().sort();
+  };
+
+  func filterAndAggregateTransactions(transactionType : ItemType) : TransactionAggregate {
+    let filteredResults = transactions.entries().toArray().filter(
+      func((_, record)) {
+        record.transactionType == transactionType;
+      }
+    );
+
+    filteredResults.foldLeft(
+      { totalWeight = 0.0; totalPieces = 0 },
+      func(acc, (_, record)) {
+        {
+          totalWeight = acc.totalWeight + record.item.grossWeight;
+          totalPieces = acc.totalPieces + record.item.pieces;
+        };
+      },
+    );
+  };
+
+  // Corrected to use grossWeight and pieces for aggregates
+  public query ({ caller }) func getTypeAggregates() : async AnalyticsData {
+    {
+      salesAggregate = filterAndAggregateTransactions(#sale);
+      purchaseAggregate = filterAndAggregateTransactions(#purchase);
+      salesReturnAggregate = filterAndAggregateTransactions(#salesReturn);
+      purchaseReturnAggregate = filterAndAggregateTransactions(#purchaseReturn);
+    };
+  };
+
+  // Rename customer and update transaction records
+  public shared ({ caller }) func renameCustomer(oldName : Text, newName : Text) : async () {
+    switch (customers.get(oldName)) {
+      case (null) {};
+      case (?customer) {
+        customers.remove(oldName);
+        if (newName != "") {
+          let updatedCustomer : Customer = {
+            name = newName;
+            transactionHistory = customer.transactionHistory;
+            currentHoldings = customer.currentHoldings;
+          };
+          customers.add(newName, updatedCustomer);
+        };
+      };
+    };
+
+    // Update all transactions with oldName
+    let updatedTransactions = transactions.map<Nat, TransactionRecord, TransactionRecord>(
+      func(_id, record) {
+        switch (record.customerName) {
+          case (?name) {
+            if (name == oldName) {
+              {
+                record with
+                customerName = if (newName == "") { null } else { ?newName };
+              };
+            } else { record };
+          };
+          case (null) { record };
+        };
+      }
+    );
+
+    transactions.clear();
+    for ((id, record) in updatedTransactions.entries()) {
+      transactions.add(id, record);
+    };
+  };
+
+  public shared ({ caller }) func resetAllData() : async () {
+    items.clear();
+    transactions.clear();
+    customers.clear();
+    nextTransactionId := 1;
   };
 };

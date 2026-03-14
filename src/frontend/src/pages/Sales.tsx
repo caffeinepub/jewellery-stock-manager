@@ -1,147 +1,225 @@
-import { useState } from 'react';
-import { ItemType } from '../backend';
-import ExcelUploader from '../components/ExcelUploader';
-import TransactionPreview from '../components/TransactionPreview';
-import ManualEntryForm from '../components/ManualEntryForm';
-import CodeChartTabs from '../components/CodeChartTabs';
-import TransactionTotalsView from '../components/TransactionTotalsView';
-import BarcodeScanner from '../components/BarcodeScanner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { ShoppingCart, FileSpreadsheet, Edit, ScanLine } from 'lucide-react';
-import type { ParsedItem } from '../utils/scannerParser';
-import { parseScannerString } from '../utils/scannerParser';
-import { toast } from 'sonner';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  FileSpreadsheet,
+  PenLine,
+  ScanLine,
+  ShoppingBag,
+  Users,
+} from "lucide-react";
+import { useState } from "react";
+import { ItemType, type JewelleryItem } from "../backend";
+import BarcodeScanner from "../components/BarcodeScanner";
+import CodeChartTabs from "../components/CodeChartTabs";
+import ExcelUploader from "../components/ExcelUploader";
+import ManualEntryForm from "../components/ManualEntryForm";
+import TransactionPreview from "../components/TransactionPreview";
+import TransactionTotalsView from "../components/TransactionTotalsView";
+import {
+  useAvailableStock,
+  useCustomers,
+  useTransactionsByType,
+} from "../hooks/useQueries";
+import type { ParsedItem } from "../utils/scannerParser";
 
 export default function Sales() {
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
-  const [uploadMode, setUploadMode] = useState<'excel' | 'manual' | 'barcode' | null>(null);
+  const [customerName, setCustomerName] = useState("");
+  const [customerSelectVal, setCustomerSelectVal] = useState("");
+  const [inputTab, setInputTab] = useState("excel");
 
-  const handleManualEntry = (item: ParsedItem) => {
-    setParsedItems((prev) => [...prev, item]);
-  };
+  const { data: stockItems } = useAvailableStock(ItemType.purchase);
+  const { data: salesTransactions } = useTransactionsByType(ItemType.sale);
+  const { data: customers } = useCustomers();
 
-  const handleStockSelection = (items: ParsedItem[]) => {
-    setParsedItems(items);
-  };
+  const availableStock = stockItems?.filter((i) => !i.isSold) ?? [];
+  const existingCustomerNames = (customers ?? []).map((c) => c.name);
 
-  const handleBarcodeScan = (data: string) => {
-    try {
-      const parsed = parseScannerString(data);
-      if (parsed.status === 'VALID') {
-        setParsedItems((prev) => [...prev, parsed]);
-        toast.success('Barcode scanned successfully!');
-        setUploadMode(null);
-      } else if (parsed.status === 'MISTAKE') {
-        toast.warning('Barcode scanned with warnings. Please verify the data.');
-        setParsedItems((prev) => [...prev, parsed]);
-        setUploadMode(null);
-      } else {
-        toast.error('Invalid barcode data. Please try again.');
-      }
-    } catch (error) {
-      toast.error('Failed to parse barcode data.');
+  const handleCustomerSelect = (val: string) => {
+    setCustomerSelectVal(val);
+    if (val === "" || val === "other") {
+      setCustomerName("");
+    } else {
+      setCustomerName(val);
     }
   };
 
+  const handleStockSelected = (selectedItems: JewelleryItem[]) => {
+    const mapped: ParsedItem[] = selectedItems.map((item) => ({
+      code: item.code,
+      grossWeight: item.grossWeight,
+      stoneWeight: item.stoneWeight,
+      netWeight: item.netWeight,
+      pieces: Number(item.pieces),
+      status: "VALID" as const,
+    }));
+    setParsedItems(mapped);
+  };
+
+  const handleConfirm = () => {
+    setParsedItems([]);
+    setCustomerName("");
+    setCustomerSelectVal("");
+  };
+
+  const handleCancel = () => {
+    setParsedItems([]);
+  };
+
   return (
-    <div className="space-y-8 pb-8">
-      <div className="sticky top-16 z-40 bg-background pb-6 border-b">
-        <h2 className="text-4xl font-bold tracking-tight flex items-center gap-3 font-display">
-          <ShoppingCart className="h-10 w-10 text-success" />
-          Sales
-        </h2>
+    <div className="space-y-6">
+      {/* Colorful Page Header */}
+      <div className="page-header-sales rounded-2xl p-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-success/20 flex items-center justify-center">
+            <ShoppingBag className="w-5 h-5 text-success" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-bold text-foreground">
+              Sales
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Record jewellery sales transactions
+            </p>
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="make-entry" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2 h-12 rounded-xl shadow-soft">
-          <TabsTrigger value="make-entry" className="text-base rounded-lg">Make Entry</TabsTrigger>
-          <TabsTrigger value="view-totals" className="text-base rounded-lg">View Totals</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="make-entry" className="space-y-8 mt-8">
-          {/* Upload Options - Above Tabs */}
-          <Card className="shadow-medium">
-            <CardHeader>
-              <CardTitle className="text-xl font-display">Add Items for Sale</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {!uploadMode && (
-                <div className="grid grid-cols-3 gap-4">
-                  <Button
-                    onClick={() => setUploadMode('excel')}
-                    variant="outline"
-                    className="h-24 flex-col gap-3 shadow-soft hover:shadow-medium transition-all duration-200"
-                  >
-                    <FileSpreadsheet className="h-8 w-8 text-success" />
-                    <span className="text-sm font-medium">Excel Upload</span>
-                  </Button>
-                  <Button
-                    onClick={() => setUploadMode('manual')}
-                    variant="outline"
-                    className="h-24 flex-col gap-3 shadow-soft hover:shadow-medium transition-all duration-200"
-                  >
-                    <Edit className="h-8 w-8 text-primary" />
-                    <span className="text-sm font-medium">Manual Entry</span>
-                  </Button>
-                  <Button
-                    onClick={() => setUploadMode('barcode')}
-                    variant="outline"
-                    className="h-24 flex-col gap-3 shadow-soft hover:shadow-medium transition-all duration-200"
-                  >
-                    <ScanLine className="h-8 w-8 text-secondary" />
-                    <span className="text-sm font-medium">Scan Barcode</span>
-                  </Button>
-                </div>
-              )}
-
-              {uploadMode === 'excel' && (
-                <div className="space-y-4">
-                  <ExcelUploader onDataParsed={setParsedItems} />
-                  <Button variant="outline" onClick={() => setUploadMode(null)}>
-                    Cancel
-                  </Button>
-                </div>
-              )}
-              {uploadMode === 'manual' && (
-                <div className="space-y-4">
-                  <ManualEntryForm onEntryAdded={handleManualEntry} />
-                  <Button variant="outline" onClick={() => setUploadMode(null)}>
-                    Cancel
-                  </Button>
-                </div>
-              )}
-              {uploadMode === 'barcode' && (
-                <BarcodeScanner
-                  onScanSuccess={handleBarcodeScan}
-                  onClose={() => setUploadMode(null)}
+      {parsedItems.length > 0 ? (
+        <div className="bg-card border border-border rounded-2xl p-6 shadow-soft section-card-green">
+          <TransactionPreview
+            items={parsedItems}
+            transactionType="sale"
+            customerName={customerName}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Customer Name */}
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-soft section-card-green">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-4 h-4 text-success" />
+              <h2 className="font-display font-semibold text-sm text-foreground">
+                Customer
+              </h2>
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="customer-select"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Customer Name (optional)
+              </Label>
+              <select
+                id="customer-select"
+                value={customerSelectVal}
+                onChange={(e) => handleCustomerSelect(e.target.value)}
+                className="flex h-10 w-full max-w-sm rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success transition-colors"
+                data-ocid="sales.select"
+              >
+                <option value="">— Select customer —</option>
+                {existingCustomerNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+                <option value="other">--- New Customer ---</option>
+              </select>
+              {customerSelectVal === "other" && (
+                <Input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Enter new customer name…"
+                  className="max-w-sm mt-2 focus-visible:ring-success/50"
+                  data-ocid="sales.input"
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* CODE Chart Tabs for Stock Selection */}
-          <CodeChartTabs
-            transactionType={ItemType.sale}
-            onSelectionComplete={handleStockSelection}
-          />
+          {/* Input Method */}
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-soft section-card-green">
+            <h2 className="font-display font-semibold text-sm text-foreground mb-4">
+              Add Items
+            </h2>
+            <Tabs value={inputTab} onValueChange={setInputTab}>
+              <TabsList className="mb-4 bg-success/10">
+                <TabsTrigger
+                  value="excel"
+                  className="gap-2 text-xs data-[state=active]:bg-success data-[state=active]:text-white"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Excel
+                </TabsTrigger>
+                <TabsTrigger
+                  value="manual"
+                  className="gap-2 text-xs data-[state=active]:bg-success data-[state=active]:text-white"
+                >
+                  <PenLine className="w-3.5 h-3.5" />
+                  Manual
+                </TabsTrigger>
+                <TabsTrigger
+                  value="scan"
+                  className="gap-2 text-xs data-[state=active]:bg-success data-[state=active]:text-white"
+                >
+                  <ScanLine className="w-3.5 h-3.5" />
+                  Scan
+                </TabsTrigger>
+                <TabsTrigger
+                  value="stock"
+                  className="gap-2 text-xs data-[state=active]:bg-success data-[state=active]:text-white"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Stock
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="excel">
+                <ExcelUploader
+                  onItemsParsed={setParsedItems}
+                  label="Upload Sales Excel"
+                />
+              </TabsContent>
+              <TabsContent value="manual">
+                <ManualEntryForm
+                  onItemAdded={(item) => setParsedItems([item])}
+                />
+              </TabsContent>
+              <TabsContent value="scan">
+                <BarcodeScanner
+                  onItemScanned={(item) => setParsedItems([item])}
+                />
+              </TabsContent>
+              <TabsContent value="stock">
+                <CodeChartTabs
+                  items={availableStock}
+                  onSelectionConfirmed={handleStockSelected}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
 
-          {/* Transaction Preview */}
-          {parsedItems.length > 0 && (
-            <TransactionPreview
-              items={parsedItems}
-              transactionType={ItemType.sale}
-              onComplete={() => setParsedItems([])}
-              onItemsChange={setParsedItems}
-            />
+          {/* Transaction History */}
+          {salesTransactions && salesTransactions.length > 0 && (
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-soft section-card-green">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-6 rounded-full bg-success" />
+                <h2 className="font-display font-semibold text-base text-foreground">
+                  Sales History
+                </h2>
+              </div>
+              <TransactionTotalsView
+                transactions={salesTransactions}
+                title=""
+                showReportDownloader
+                colorTheme="green"
+              />
+            </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="view-totals" className="mt-8">
-          <TransactionTotalsView transactionType={ItemType.sale} />
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }

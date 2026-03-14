@@ -1,146 +1,132 @@
-import { useCallback, useState } from 'react';
-import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { parseScannerStrings } from '../utils/scannerParser';
-import type { ParsedItem } from '../utils/scannerParser';
+import { AlertCircle, FileSpreadsheet, Loader2, Upload } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { parseScannerString } from "../utils/scannerParser";
+import type { ParsedItem } from "../utils/scannerParser";
 
 interface ExcelUploaderProps {
-  onDataParsed: (items: ParsedItem[]) => void;
-}
-
-// Type definition for XLSX library
-interface XLSXWorkbook {
-  SheetNames: string[];
-  Sheets: { [key: string]: unknown };
-}
-
-interface XLSXUtils {
-  sheet_to_json: (sheet: unknown, options?: { header?: number }) => unknown[][];
-}
-
-interface XLSXLibrary {
-  read: (data: ArrayBuffer, options?: { type?: string }) => XLSXWorkbook;
-  utils: XLSXUtils;
+  onItemsParsed: (items: ParsedItem[]) => void;
+  label?: string;
 }
 
 declare global {
   interface Window {
-    XLSX?: XLSXLibrary;
+    XLSX: any;
   }
 }
 
-export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
+let xlsxLoadPromise: Promise<void> | null = null;
+
+function preloadXLSX(): Promise<void> {
+  if (xlsxLoadPromise) return xlsxLoadPromise;
+  if (typeof window !== "undefined" && window.XLSX) {
+    xlsxLoadPromise = Promise.resolve();
+    return xlsxLoadPromise;
+  }
+  xlsxLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src =
+      "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load XLSX library"));
+    document.head.appendChild(script);
+  });
+  return xlsxLoadPromise;
+}
+
+export default function ExcelUploader({
+  onItemsParsed,
+  label,
+}: ExcelUploaderProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [xlsxReady, setXlsxReady] = useState(
+    !!(typeof window !== "undefined" && window.XLSX),
+  );
 
-  const loadXLSXLibrary = useCallback(async (): Promise<XLSXLibrary> => {
-    // Check if already loaded
-    if (window.XLSX) {
-      return window.XLSX;
-    }
-
-    setIsLoadingLibrary(true);
-
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
-      script.onload = () => {
-        setIsLoadingLibrary(false);
-        if (window.XLSX) {
-          resolve(window.XLSX);
-        } else {
-          reject(new Error('Failed to load XLSX library'));
-        }
-      };
-      script.onerror = () => {
-        setIsLoadingLibrary(false);
-        reject(new Error('Failed to load XLSX library'));
-      };
-      document.head.appendChild(script);
-    });
+  useEffect(() => {
+    preloadXLSX()
+      .then(() => setXlsxReady(true))
+      .catch(() => {
+        // Will retry on file selection
+      });
   }, []);
 
   const processFile = useCallback(
     async (file: File) => {
-      setError(null);
+      if (!file) return;
+
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      if (!["xlsx", "xls", "csv"].includes(ext || "")) {
+        setError("Please upload an Excel (.xlsx, .xls) or CSV file.");
+        return;
+      }
+
       setIsProcessing(true);
+      setError(null);
 
       try {
-        // Load XLSX library if not already loaded
-        const XLSX = await loadXLSXLibrary();
-
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data, { type: 'array' });
-
-        // Get first worksheet
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-
-        // Convert to array of arrays
-        const rawData: unknown[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        // Extract scanner strings (assuming they're in the first column)
-        const scannerStrings: string[] = rawData
-          .map((row) => {
-            // Try to find a string value in the row
-            const value = row.find((cell) => typeof cell === 'string' && cell.trim().length > 0);
-            return typeof value === 'string' ? value.trim() : '';
-          })
-          .filter((str) => str.length > 0);
-
-        if (scannerStrings.length === 0) {
-          setError('No data found in the Excel file. Please ensure the file contains scanner strings.');
-          setIsProcessing(false);
-          return;
+        if (!window.XLSX) {
+          await preloadXLSX();
         }
 
-        // Parse scanner strings
-        const parsedItems = parseScannerStrings(scannerStrings);
+        const XLSX = window.XLSX;
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+          raw: true,
+          defval: "",
+        });
+
+        const parsedItems: ParsedItem[] = [];
+
+        for (const row of rawData) {
+          for (const cell of row) {
+            const cellStr = String(cell).trim();
+            if (!cellStr) continue;
+            const result = parseScannerString(cellStr);
+            if (result.status !== "INVALID") {
+              parsedItems.push(result);
+            }
+          }
+        }
 
         if (parsedItems.length === 0) {
-          setError('No valid scanner strings found. Please check the file format.');
-          setIsProcessing(false);
-          return;
+          setError("No valid jewellery items found in the file.");
+        } else {
+          onItemsParsed(parsedItems);
         }
-
-        onDataParsed(parsedItems);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to process file');
+        setError("Failed to parse file. Please check the format.");
+        console.error(err);
       } finally {
         setIsProcessing(false);
       }
     },
-    [onDataParsed, loadXLSXLibrary]
+    [onItemsParsed],
   );
 
-  const handleFileSelect = useCallback(
+  const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) {
-        processFile(file);
-      }
+      if (file) processFile(file);
+      e.target.value = "";
     },
-    [processFile]
+    [processFile],
   );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-
-      const file = e.dataTransfer.files[0];
-      if (file) {
-        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-          processFile(file);
-        } else {
-          setError('Please upload an Excel file (.xlsx or .xls)');
-        }
-      }
+      const file = e.dataTransfer.files?.[0];
+      if (file) processFile(file);
     },
-    [processFile]
+    [processFile],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -152,59 +138,97 @@ export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
     setIsDragging(false);
   }, []);
 
-  const isLoading = isProcessing || isLoadingLibrary;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if ((e.key === "Enter" || e.key === " ") && !isProcessing) {
+        fileInputRef.current?.click();
+      }
+    },
+    [isProcessing],
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="w-full">
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`relative rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
+        onClick={() => !isProcessing && fileInputRef.current?.click()}
+        onKeyDown={handleKeyDown}
+        className={[
+          "relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer",
+          "transition-all duration-200 group",
           isDragging
-            ? 'border-primary bg-primary/5'
-            : 'border-border hover:border-primary/50 hover:bg-accent/50'
-        }`}
+            ? "border-primary bg-primary/5 scale-[1.01]"
+            : "border-border hover:border-primary/50 hover:bg-secondary/50",
+          isProcessing ? "pointer-events-none opacity-70" : "",
+        ].join(" ")}
       >
         <input
+          ref={fileInputRef}
           type="file"
-          accept=".xlsx,.xls"
-          onChange={handleFileSelect}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-          disabled={isLoading}
+          accept=".xlsx,.xls,.csv"
+          onChange={handleFileChange}
+          className="hidden"
         />
 
-        <div className="flex flex-col items-center gap-4">
-          {isLoading ? (
+        <div className="flex flex-col items-center gap-3">
+          {isProcessing ? (
             <>
-              <FileSpreadsheet className="h-12 w-12 text-muted-foreground animate-pulse" />
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              </div>
               <div>
-                <p className="text-lg font-medium">
-                  {isLoadingLibrary ? 'Loading Excel library...' : 'Processing file...'}
+                <p className="text-sm font-medium text-foreground">
+                  Processing file…
                 </p>
-                <p className="text-sm text-muted-foreground">Please wait while we parse the data</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Parsing items
+                </p>
               </div>
             </>
           ) : (
             <>
-              <Upload className="h-12 w-12 text-muted-foreground" />
-              <div>
-                <p className="text-lg font-medium">Drop your Excel file here</p>
-                <p className="text-sm text-muted-foreground">or click to browse</p>
+              <div
+                className={[
+                  "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
+                  isDragging
+                    ? "bg-primary/20"
+                    : "bg-secondary group-hover:bg-primary/10",
+                ].join(" ")}
+              >
+                {isDragging ? (
+                  <FileSpreadsheet className="w-6 h-6 text-primary" />
+                ) : (
+                  <Upload className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                )}
               </div>
-              <Button variant="outline" type="button">
-                Select File
-              </Button>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {label || "Upload Excel / CSV"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isDragging
+                    ? "Drop to upload"
+                    : "Drag & drop or click to browse"}
+                </p>
+                {!xlsxReady && (
+                  <p className="text-xs text-warning mt-1 flex items-center justify-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Loading parser…
+                  </p>
+                )}
+              </div>
             </>
           )}
         </div>
       </div>
 
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+          <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
       )}
     </div>
   );

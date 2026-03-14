@@ -11,20 +11,20 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export interface AnalyticsData {
-  'totalInventoryValue' : number,
-  'returnCount' : bigint,
-  'numberOfPieces' : bigint,
-  'purchaseCount' : bigint,
-  'salesCount' : bigint,
+  'salesAggregate' : TransactionAggregate,
+  'purchaseAggregate' : TransactionAggregate,
+  'salesReturnAggregate' : TransactionAggregate,
+  'purchaseReturnAggregate' : TransactionAggregate,
 }
 export interface Customer {
   'currentHoldings' : Array<JewelleryItem>,
   'name' : string,
   'transactionHistory' : Array<TransactionRecord>,
 }
-export type ItemType = { 'sale' : null } |
-  { 'purchase' : null } |
-  { 'returned' : null };
+export type ItemType = { 'salesReturn' : null } |
+  { 'sale' : null } |
+  { 'purchaseReturn' : null } |
+  { 'purchase' : null };
 export interface JewelleryItem {
   'code' : string,
   'netWeight' : number,
@@ -34,16 +34,36 @@ export interface JewelleryItem {
   'itemType' : ItemType,
   'stoneWeight' : number,
 }
+export interface TransactionAggregate {
+  'totalPieces' : bigint,
+  'totalWeight' : number,
+}
 export interface TransactionInput {
+  'customerName' : [] | [string],
+  'transactionCode' : string,
   'transactionType' : ItemType,
+  'metalPurity' : [] | [number],
   'code' : string,
+  'netWeight' : number,
+  'cashBalance' : [] | [number],
   'timestamp' : bigint,
+  'quantity' : bigint,
+  'stoneChargePerGram' : [] | [number],
+  'metalBalance' : [] | [number],
 }
 export interface TransactionRecord {
   'id' : bigint,
+  'customerName' : [] | [string],
+  'transactionCode' : string,
   'transactionType' : ItemType,
+  'metalPurity' : [] | [number],
+  'netWeight' : number,
   'item' : JewelleryItem,
+  'cashBalance' : [] | [number],
   'timestamp' : bigint,
+  'quantity' : bigint,
+  'stoneChargePerGram' : [] | [number],
+  'metalBalance' : [] | [number],
 }
 export interface _CaffeineStorageCreateCertificateResult {
   'method' : string,
@@ -84,18 +104,33 @@ export interface _SERVICE {
     [string, number, number, number, bigint, ItemType],
     undefined
   >,
-  'addTransaction' : ActorMethod<[string, ItemType, bigint], string>,
+  'addTransaction' : ActorMethod<
+    [
+      string,
+      ItemType,
+      bigint,
+      [] | [string],
+      bigint,
+      number,
+      string,
+      [] | [number],
+      [] | [number],
+      [] | [number],
+      [] | [number],
+    ],
+    string
+  >,
   'createCustomer' : ActorMethod<[string], undefined>,
   'deleteCustomer' : ActorMethod<[string], undefined>,
   'getAllCustomers' : ActorMethod<[], Array<Customer>>,
   'getAllItems' : ActorMethod<[], Array<JewelleryItem>>,
   'getAllTransactions' : ActorMethod<[], Array<TransactionRecord>>,
-  'getAnalyticsData' : ActorMethod<[], AnalyticsData>,
   'getAvailableItemsByType' : ActorMethod<[ItemType], Array<JewelleryItem>>,
   'getCustomer' : ActorMethod<[string], [] | [Customer]>,
   'getItem' : ActorMethod<[string], [] | [JewelleryItem]>,
-  'getTransaction' : ActorMethod<[bigint], [] | [TransactionRecord]>,
-  'getTransactionsByType' : ActorMethod<[ItemType], Array<TransactionRecord>>,
+  'getTypeAggregates' : ActorMethod<[], AnalyticsData>,
+  'renameCustomer' : ActorMethod<[string, string], undefined>,
+  'resetAllData' : ActorMethod<[], undefined>,
   'updateCustomer' : ActorMethod<
     [string, TransactionRecord, JewelleryItem],
     undefined
