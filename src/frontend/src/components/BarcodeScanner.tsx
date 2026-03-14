@@ -5,14 +5,17 @@ import {
   CameraOff,
   RotateCcw,
   ScanLine,
+  Send,
+  Trash2,
+  X,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQRScanner } from "../qr-code/useQRScanner";
 import { parseScannerString } from "../utils/scannerParser";
 import type { ParsedItem } from "../utils/scannerParser";
 
 interface BarcodeScannerProps {
-  onItemScanned: (item: ParsedItem) => void;
+  onBatchReady: (items: ParsedItem[]) => void;
 }
 
 const isMobile =
@@ -20,7 +23,10 @@ const isMobile =
     navigator.userAgent,
   );
 
-export default function BarcodeScanner({ onItemScanned }: BarcodeScannerProps) {
+export default function BarcodeScanner({ onBatchReady }: BarcodeScannerProps) {
+  const [scannedItems, setScannedItems] = useState<ParsedItem[]>([]);
+  const [flashGreen, setFlashGreen] = useState(false);
+
   const {
     qrResults,
     isActive,
@@ -45,11 +51,23 @@ export default function BarcodeScanner({ onItemScanned }: BarcodeScannerProps) {
       const latest = qrResults[0];
       const parsed = parseScannerString(latest.data);
       if (parsed.status !== "INVALID") {
-        onItemScanned(parsed);
+        setScannedItems((prev) => [...prev, parsed]);
+        setFlashGreen(true);
+        setTimeout(() => setFlashGreen(false), 600);
         clearResults();
       }
     }
-  }, [qrResults, onItemScanned, clearResults]);
+  }, [qrResults, clearResults]);
+
+  const handleReviewAndSubmit = () => {
+    if (scannedItems.length === 0) return;
+    onBatchReady(scannedItems);
+    setScannedItems([]);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setScannedItems((prev) => prev.filter((_, i) => i !== index));
+  };
 
   if (isSupported === false) {
     return (
@@ -66,7 +84,9 @@ export default function BarcodeScanner({ onItemScanned }: BarcodeScannerProps) {
     <div className="space-y-3">
       {/* Camera Preview */}
       <div
-        className="relative rounded-xl overflow-hidden bg-secondary border border-border"
+        className={`relative rounded-xl overflow-hidden bg-secondary border-2 transition-colors duration-300 ${
+          flashGreen ? "border-success" : "border-border"
+        }`}
         style={{ minHeight: 240 }}
       >
         <video
@@ -105,6 +125,13 @@ export default function BarcodeScanner({ onItemScanned }: BarcodeScannerProps) {
               <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-primary rounded-br" />
               <ScanLine className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-primary/40" />
             </div>
+          </div>
+        )}
+
+        {/* Count badge */}
+        {isActive && scannedItems.length > 0 && (
+          <div className="absolute top-2 right-2 bg-success text-white text-xs font-bold px-2 py-1 rounded-full shadow">
+            {scannedItems.length} scanned
           </div>
         )}
       </div>
@@ -150,6 +177,59 @@ export default function BarcodeScanner({ onItemScanned }: BarcodeScannerProps) {
           </Button>
         )}
       </div>
+
+      {/* Scanned items list */}
+      {scannedItems.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">
+              {scannedItems.length} item{scannedItems.length !== 1 ? "s" : ""}{" "}
+              scanned
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setScannedItems([])}
+              className="text-destructive hover:text-destructive gap-1 text-xs h-7"
+            >
+              <Trash2 className="w-3 h-3" />
+              Clear All
+            </Button>
+          </div>
+          <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+            {scannedItems.map((item, idx) => (
+              <div
+                // biome-ignore lint/suspicious/noArrayIndexKey: scan list is ephemeral and reorder-safe
+                key={`scan-${idx}`}
+                className="flex items-center justify-between px-3 py-2 bg-card text-xs"
+              >
+                <span className="font-mono font-semibold text-foreground">
+                  {item.code}
+                </span>
+                <span className="text-muted-foreground">
+                  GW: {(item.grossWeight ?? 0).toFixed(3)}g
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveItem(idx)}
+                  className="ml-2 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <Button
+            onClick={handleReviewAndSubmit}
+            className="w-full gap-2"
+            data-ocid="scanner.submit_button"
+          >
+            <Send className="w-4 h-4" />
+            Review &amp; Submit ({scannedItems.length} item
+            {scannedItems.length !== 1 ? "s" : ""})
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

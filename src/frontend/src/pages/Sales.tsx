@@ -189,7 +189,7 @@ export default function Sales() {
               </TabsContent>
               <TabsContent value="scan">
                 <BarcodeScanner
-                  onItemScanned={(item) => setParsedItems([item])}
+                  onBatchReady={(items) => setParsedItems(items)}
                 />
               </TabsContent>
               <TabsContent value="stock">

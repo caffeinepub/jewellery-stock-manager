@@ -98,6 +98,36 @@ actor {
     };
   };
 
+  // Helper: upsert a transaction record into a customer's history (create customer if needed)
+  func upsertCustomerTransaction(name : Text, record : TransactionRecord, addHolding : ?JewelleryItem) : () {
+    switch (customers.get(name)) {
+      case (null) {
+        let holdings : [JewelleryItem] = switch (addHolding) {
+          case (?item) { [item] };
+          case (null) { [] };
+        };
+        let newCustomer : Customer = {
+          name;
+          transactionHistory = [record];
+          currentHoldings = holdings;
+        };
+        customers.add(name, newCustomer);
+      };
+      case (?customer) {
+        let updatedHoldings : [JewelleryItem] = switch (addHolding) {
+          case (?item) { customer.currentHoldings.concat([item]) };
+          case (null) { customer.currentHoldings };
+        };
+        let updatedCustomer : Customer = {
+          name;
+          transactionHistory = customer.transactionHistory.concat([record]);
+          currentHoldings = updatedHoldings;
+        };
+        customers.add(name, updatedCustomer);
+      };
+    };
+  };
+
   public shared ({ caller }) func addItem(
     code : Text,
     grossWeight : Float,
@@ -178,26 +208,14 @@ actor {
         transactions.add(nextTransactionId, record);
         nextTransactionId += 1;
 
+        // Update customer history for sales AND sales returns
         switch (customerName, transactionType) {
           case (?name, #sale) {
-            switch (customers.get(name)) {
-              case (null) {
-                let newCustomer : Customer = {
-                  name;
-                  transactionHistory = [record];
-                  currentHoldings = [updatedItem];
-                };
-                customers.add(name, newCustomer);
-              };
-              case (?customer) {
-                let updatedCustomer : Customer = {
-                  name;
-                  transactionHistory = customer.transactionHistory.concat([record]);
-                  currentHoldings = customer.currentHoldings.concat([updatedItem]);
-                };
-                customers.add(name, updatedCustomer);
-              };
-            };
+            upsertCustomerTransaction(name, record, ?updatedItem);
+          };
+          case (?name, #salesReturn) {
+            // For returns, add to history but do NOT add to currentHoldings
+            upsertCustomerTransaction(name, record, null);
           };
           case (_, _) {};
         };
@@ -307,7 +325,6 @@ actor {
     );
   };
 
-  // Corrected to use grossWeight and pieces for aggregates
   public query ({ caller }) func getTypeAggregates() : async AnalyticsData {
     {
       salesAggregate = filterAndAggregateTransactions(#sale);

@@ -45,6 +45,13 @@ interface CalcState {
   nonStonePurity: number;
 }
 
+// Saved calc stores the raw inputs so we can compute per-item values directly
+interface SavedCalc {
+  stonePurity: number;
+  nonStonePurity: number;
+  stoneChargePerGram: number;
+}
+
 function revalidateItem(
   item: Partial<ParsedItem>,
 ): "VALID" | "MISTAKE" | "INVALID" {
@@ -81,12 +88,7 @@ export default function TransactionPreview({
     stoneChargePerGram: 0,
     nonStonePurity: 99,
   });
-  const [savedCalc, setSavedCalc] = useState<{
-    metalPurity?: number;
-    metalBalance?: number;
-    stoneChargePerGram?: number;
-    cashBalance?: number;
-  } | null>(null);
+  const [savedCalc, setSavedCalc] = useState<SavedCalc | null>(null);
 
   const addBatchItems = useAddBatchItems();
   const addBatchTransactions = useAddBatchTransactions();
@@ -182,15 +184,14 @@ export default function TransactionPreview({
   };
 
   const handleSubmitClick = () => {
-    if (transactionType === "sale") {
-      // Show calc panel first
+    if (transactionType === "sale" || transactionType === "salesReturn") {
       setShowCalcPanel(true);
     } else {
       openConfirm(null);
     }
   };
 
-  const openConfirm = (calc: typeof savedCalc) => {
+  const openConfirm = (calc: SavedCalc | null) => {
     setSavedCalc(calc);
     addBatchItems.reset();
     addBatchTransactions.reset();
@@ -203,20 +204,44 @@ export default function TransactionPreview({
   };
 
   const handleCalcSave = () => {
-    const calc = {
-      metalPurity:
-        stoneItems.length > 0
-          ? calcState.stonePurity
-          : calcState.nonStonePurity,
-      metalBalance:
-        stoneItems.length > 0
-          ? stoneMetalBalance + nonStoneMetalBalance
-          : nonStoneMetalBalance,
-      stoneChargePerGram: calcState.stoneChargePerGram || undefined,
-      cashBalance: stoneCashBalance || undefined,
-    };
-    openConfirm(calc);
+    openConfirm({
+      stonePurity: calcState.stonePurity,
+      nonStonePurity: calcState.nonStonePurity,
+      stoneChargePerGram: calcState.stoneChargePerGram,
+    });
   };
+
+  // Compute per-item metalBalance and cashBalance directly from individual item weights
+  function getItemCalcValues(item: IndexedItem): {
+    metalPurity: number | undefined;
+    metalBalance: number | undefined;
+    cashBalance: number | undefined;
+    stoneChargePerGram: number | undefined;
+  } {
+    if (!savedCalc) {
+      return {
+        metalPurity: undefined,
+        metalBalance: undefined,
+        cashBalance: undefined,
+        stoneChargePerGram: undefined,
+      };
+    }
+    const isStone = (item.stoneWeight ?? 0) > 0;
+    const purity = isStone ? savedCalc.stonePurity : savedCalc.nonStonePurity;
+    const nw = item.netWeight ?? 0;
+    const sw = item.stoneWeight ?? 0;
+    const metalBalance = (nw * purity) / 100;
+    const cashBalance = isStone ? sw * savedCalc.stoneChargePerGram : 0;
+    return {
+      metalPurity: purity,
+      metalBalance,
+      cashBalance: cashBalance > 0 ? cashBalance : undefined,
+      stoneChargePerGram:
+        savedCalc.stoneChargePerGram > 0
+          ? savedCalc.stoneChargePerGram
+          : undefined,
+    };
+  }
 
   const handleConfirm = async () => {
     try {
@@ -244,19 +269,24 @@ export default function TransactionPreview({
       );
 
       await addBatchTransactions.mutateAsync(
-        validItems.map((item) => ({
-          code: item.code,
-          transactionType: itemType,
-          timestamp,
-          customerName: customerName?.trim() ? customerName.trim() : undefined,
-          quantity: BigInt(item.pieces ?? 0),
-          netWeight: item.netWeight ?? 0,
-          transactionCode: item.code,
-          metalPurity: savedCalc?.metalPurity,
-          metalBalance: savedCalc?.metalBalance,
-          stoneChargePerGram: savedCalc?.stoneChargePerGram,
-          cashBalance: savedCalc?.cashBalance,
-        })),
+        validItems.map((item) => {
+          const calc = getItemCalcValues(item);
+          return {
+            code: item.code,
+            transactionType: itemType,
+            timestamp,
+            customerName: customerName?.trim()
+              ? customerName.trim()
+              : undefined,
+            quantity: BigInt(item.pieces ?? 0),
+            netWeight: item.netWeight ?? 0,
+            transactionCode: item.code,
+            metalPurity: calc.metalPurity,
+            metalBalance: calc.metalBalance,
+            stoneChargePerGram: calc.stoneChargePerGram,
+            cashBalance: calc.cashBalance,
+          };
+        }),
       );
 
       setShowConfirmDialog(false);
@@ -269,6 +299,24 @@ export default function TransactionPreview({
   const isSubmitting =
     addBatchItems.isPending || addBatchTransactions.isPending;
   const hasError = addBatchItems.isError || addBatchTransactions.isError;
+
+  // Preview totals for confirm dialog
+  const confirmTotalMetal = savedCalc
+    ? validItems.reduce((s, item) => {
+        const isStone = (item.stoneWeight ?? 0) > 0;
+        const purity = isStone
+          ? savedCalc.stonePurity
+          : savedCalc.nonStonePurity;
+        return s + ((item.netWeight ?? 0) * purity) / 100;
+      }, 0)
+    : null;
+  const confirmTotalCash = savedCalc
+    ? validItems.reduce((s, item) => {
+        const isStone = (item.stoneWeight ?? 0) > 0;
+        if (!isStone) return s;
+        return s + (item.stoneWeight ?? 0) * savedCalc.stoneChargePerGram;
+      }, 0)
+    : null;
 
   const typeLabel =
     transactionType === "sale"
@@ -361,50 +409,130 @@ export default function TransactionPreview({
       )}
 
       {/* Sale Calculation Panel */}
-      {showCalcPanel && transactionType === "sale" && (
-        <div
-          className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-5 space-y-5"
-          data-ocid="preview.panel"
-        >
-          <div className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-primary" />
-            <h3 className="font-display font-semibold text-base text-foreground">
-              Sale Calculation
-            </h3>
-            <span className="text-xs text-muted-foreground ml-1">
-              (optional — skip to confirm directly)
-            </span>
-          </div>
+      {showCalcPanel &&
+        (transactionType === "sale" || transactionType === "salesReturn") && (
+          <div
+            className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-5 space-y-5"
+            data-ocid="preview.panel"
+          >
+            <div className="flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-primary" />
+              <h3 className="font-display font-semibold text-base text-foreground">
+                Sale Calculation
+              </h3>
+              <span className="text-xs text-muted-foreground ml-1">
+                (optional — skip to confirm directly)
+              </span>
+            </div>
 
-          {/* Stone Items Group */}
-          {stoneItems.length > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 space-y-3">
-              <h4 className="text-sm font-semibold text-amber-800">
-                Stone Items ({stoneItems.length} items)
-              </h4>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white rounded-lg p-3 text-center border border-amber-100">
-                  <p className="text-xs text-muted-foreground mb-1">Total GW</p>
-                  <p className="font-bold text-foreground">
-                    {stoneTotals.gw.toFixed(3)}g
-                  </p>
+            {/* Stone Items Group */}
+            {stoneItems.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-amber-800">
+                  Stone Items ({stoneItems.length} items)
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white rounded-lg p-3 text-center border border-amber-100">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Total GW
+                    </p>
+                    <p className="font-bold text-foreground">
+                      {stoneTotals.gw.toFixed(3)}g
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 text-center border border-amber-100">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Total SW
+                    </p>
+                    <p className="font-bold text-amber-600">
+                      {stoneTotals.sw.toFixed(3)}g
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 text-center border border-amber-100">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Total NW
+                    </p>
+                    <p className="font-bold text-foreground">
+                      {stoneTotals.nw.toFixed(3)}g
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-amber-100">
-                  <p className="text-xs text-muted-foreground mb-1">Total SW</p>
-                  <p className="font-bold text-amber-600">
-                    {stoneTotals.sw.toFixed(3)}g
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-amber-100">
-                  <p className="text-xs text-muted-foreground mb-1">Total NW</p>
-                  <p className="font-bold text-foreground">
-                    {stoneTotals.nw.toFixed(3)}g
-                  </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-amber-800">
+                      Metal Purity % (95–100)
+                    </Label>
+                    <Input
+                      type="number"
+                      min={95}
+                      max={100}
+                      step={0.01}
+                      value={calcState.stonePurity}
+                      onChange={(e) =>
+                        setCalcState((p) => ({
+                          ...p,
+                          stonePurity: Number(e.target.value),
+                        }))
+                      }
+                      className="h-9"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Metal Balance:{" "}
+                      <strong>{stoneMetalBalance.toFixed(3)}g</strong>
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-amber-800">
+                      Stone Charge (Rs/gm)
+                    </Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={calcState.stoneChargePerGram}
+                      onChange={(e) =>
+                        setCalcState((p) => ({
+                          ...p,
+                          stoneChargePerGram: Number(e.target.value),
+                        }))
+                      }
+                      className="h-9"
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Cash Balance:{" "}
+                      <strong>₹{stoneCashBalance.toFixed(2)}</strong>
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+            )}
+
+            {/* Non-Stone Items Group */}
+            {nonStoneItems.length > 0 && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-primary">
+                  Plain Items ({nonStoneItems.length} items)
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white rounded-lg p-3 text-center border border-primary/10">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Total GW
+                    </p>
+                    <p className="font-bold text-foreground">
+                      {nonStoneTotals.gw.toFixed(3)}g
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 text-center border border-primary/10">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Total NW
+                    </p>
+                    <p className="font-bold text-foreground">
+                      {nonStoneTotals.nw.toFixed(3)}g
+                    </p>
+                  </div>
+                </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-amber-800">
+                  <Label className="text-xs font-semibold text-primary">
                     Metal Purity % (95–100)
                   </Label>
                   <Input
@@ -412,140 +540,71 @@ export default function TransactionPreview({
                     min={95}
                     max={100}
                     step={0.01}
-                    value={calcState.stonePurity}
+                    value={calcState.nonStonePurity}
                     onChange={(e) =>
                       setCalcState((p) => ({
                         ...p,
-                        stonePurity: Number(e.target.value),
+                        nonStonePurity: Number(e.target.value),
                       }))
                     }
-                    className="h-9"
+                    className="h-9 max-w-xs"
                   />
                   <p className="text-xs text-muted-foreground">
                     Metal Balance:{" "}
-                    <strong>{stoneMetalBalance.toFixed(3)}g</strong>
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-amber-800">
-                    Stone Charge (Rs/gm)
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={calcState.stoneChargePerGram}
-                    onChange={(e) =>
-                      setCalcState((p) => ({
-                        ...p,
-                        stoneChargePerGram: Number(e.target.value),
-                      }))
-                    }
-                    className="h-9"
-                    placeholder="0"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Cash Balance:{" "}
-                    <strong>₹{stoneCashBalance.toFixed(2)}</strong>
+                    <strong>{nonStoneMetalBalance.toFixed(3)}g</strong>
                   </p>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Non-Stone Items Group */}
-          {nonStoneItems.length > 0 && (
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-              <h4 className="text-sm font-semibold text-primary">
-                Plain Items ({nonStoneItems.length} items)
+            {/* Summary */}
+            <div className="rounded-xl bg-gradient-to-r from-primary/10 to-success/10 border border-primary/20 p-4">
+              <h4 className="text-sm font-semibold text-foreground mb-3">
+                Summary
               </h4>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white rounded-lg p-3 text-center border border-primary/10">
-                  <p className="text-xs text-muted-foreground mb-1">Total GW</p>
-                  <p className="font-bold text-foreground">
-                    {nonStoneTotals.gw.toFixed(3)}g
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-primary/10">
-                  <p className="text-xs text-muted-foreground mb-1">Total NW</p>
-                  <p className="font-bold text-foreground">
-                    {nonStoneTotals.nw.toFixed(3)}g
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-primary">
-                  Metal Purity % (95–100)
-                </Label>
-                <Input
-                  type="number"
-                  min={95}
-                  max={100}
-                  step={0.01}
-                  value={calcState.nonStonePurity}
-                  onChange={(e) =>
-                    setCalcState((p) => ({
-                      ...p,
-                      nonStonePurity: Number(e.target.value),
-                    }))
-                  }
-                  className="h-9 max-w-xs"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Metal Balance:{" "}
-                  <strong>{nonStoneMetalBalance.toFixed(3)}g</strong>
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Summary */}
-          <div className="rounded-xl bg-gradient-to-r from-primary/10 to-success/10 border border-primary/20 p-4">
-            <h4 className="text-sm font-semibold text-foreground mb-3">
-              Summary
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Total Metal Balance
-                </p>
-                <p className="text-lg font-display font-bold text-primary">
-                  {(stoneMetalBalance + nonStoneMetalBalance).toFixed(3)}g
-                </p>
-              </div>
-              {stoneItems.length > 0 && (
                 <div>
                   <p className="text-xs text-muted-foreground">
-                    Cash Balance (Stone)
+                    Total Metal Balance
                   </p>
-                  <p className="text-lg font-display font-bold text-amber-600">
-                    ₹{stoneCashBalance.toFixed(2)}
+                  <p className="text-lg font-display font-bold text-primary">
+                    {(stoneMetalBalance + nonStoneMetalBalance).toFixed(3)}g
                   </p>
                 </div>
-              )}
+                {stoneItems.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Cash Balance (Stone)
+                    </p>
+                    <p className="text-lg font-display font-bold text-amber-600">
+                      ₹{stoneCashBalance.toFixed(2)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleCalcSkip}
+                className="flex-1 gap-2"
+                data-ocid="preview.cancel_button"
+              >
+                <SkipForward className="w-4 h-4" />
+                Skip & Confirm
+              </Button>
+              <Button
+                onClick={handleCalcSave}
+                className="flex-1 gap-2 bg-primary"
+                data-ocid="preview.confirm_button"
+              >
+                <Check className="w-4 h-4" />
+                Save & Confirm
+              </Button>
             </div>
           </div>
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleCalcSkip}
-              className="flex-1 gap-2"
-              data-ocid="preview.cancel_button"
-            >
-              <SkipForward className="w-4 h-4" />
-              Skip & Confirm
-            </Button>
-            <Button
-              onClick={handleCalcSave}
-              className="flex-1 gap-2 bg-primary"
-              data-ocid="preview.confirm_button"
-            >
-              <Check className="w-4 h-4" />
-              Save & Confirm
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
 
       {/* Issues banner */}
       {issueItems.length > 0 && (
@@ -828,23 +887,23 @@ export default function TransactionPreview({
               </p>
               <p className="text-xl font-bold font-display">{totals.pieces}</p>
             </div>
-            {savedCalc?.metalBalance != null && (
+            {confirmTotalMetal != null && (
               <div className="bg-primary/10 rounded-xl p-3">
                 <p className="text-xs text-primary uppercase tracking-wide mb-1">
-                  Metal Balance
+                  Total Metal Balance
                 </p>
                 <p className="text-xl font-bold font-display text-primary">
-                  {savedCalc.metalBalance.toFixed(3)}g
+                  {confirmTotalMetal.toFixed(3)}g
                 </p>
               </div>
             )}
-            {savedCalc?.cashBalance != null && (
+            {confirmTotalCash != null && confirmTotalCash > 0 && (
               <div className="bg-amber-50 rounded-xl p-3">
                 <p className="text-xs text-amber-700 uppercase tracking-wide mb-1">
                   Cash Balance
                 </p>
                 <p className="text-xl font-bold font-display text-amber-700">
-                  ₹{savedCalc.cashBalance.toFixed(2)}
+                  ₹{confirmTotalCash.toFixed(2)}
                 </p>
               </div>
             )}

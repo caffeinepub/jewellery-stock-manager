@@ -1,5 +1,13 @@
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, PenLine, RefreshCcw, ScanLine } from "lucide-react";
+import {
+  FileSpreadsheet,
+  PenLine,
+  RefreshCcw,
+  ScanLine,
+  Users,
+} from "lucide-react";
 import { useState } from "react";
 import { ItemType } from "../backend";
 import BarcodeScanner from "../components/BarcodeScanner";
@@ -7,7 +15,7 @@ import ExcelUploader from "../components/ExcelUploader";
 import ManualEntryForm from "../components/ManualEntryForm";
 import TransactionPreview from "../components/TransactionPreview";
 import TransactionTotalsView from "../components/TransactionTotalsView";
-import { useTransactionsByType } from "../hooks/useQueries";
+import { useCustomers, useTransactionsByType } from "../hooks/useQueries";
 import type { ParsedItem } from "../utils/scannerParser";
 
 export default function Returns() {
@@ -16,6 +24,12 @@ export default function Returns() {
     "salesReturn" | "purchaseReturn"
   >("salesReturn");
   const [inputTab, setInputTab] = useState("excel");
+  const [salesReturnCustomerSelect, setSalesReturnCustomerSelect] =
+    useState("");
+  const [salesReturnCustomer, setSalesReturnCustomer] = useState("");
+
+  const { data: customers } = useCustomers();
+  const existingCustomerNames = (customers ?? []).map((c) => c.name);
 
   const { data: salesReturnTransactions } = useTransactionsByType(
     ItemType.salesReturn,
@@ -31,6 +45,8 @@ export default function Returns() {
 
   const handleConfirm = () => {
     setParsedItems([]);
+    setSalesReturnCustomer("");
+    setSalesReturnCustomerSelect("");
   };
 
   const handleCancel = () => {
@@ -38,10 +54,6 @@ export default function Returns() {
   };
 
   const handleItemAdded = (item: ParsedItem) => {
-    setParsedItems((prev) => [...prev, item]);
-  };
-
-  const handleItemScanned = (item: ParsedItem) => {
     setParsedItems((prev) => [...prev, item]);
   };
 
@@ -109,6 +121,9 @@ export default function Returns() {
           <TransactionPreview
             items={parsedItems}
             transactionType={returnType}
+            customerName={
+              returnType === "salesReturn" ? salesReturnCustomer : undefined
+            }
             onConfirm={handleConfirm}
             onCancel={handleCancel}
           />
@@ -121,6 +136,44 @@ export default function Returns() {
               : "section-card-violet"
           }`}
         >
+          {returnType === "salesReturn" && parsedItems.length === 0 && (
+            <div className="mb-4 space-y-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-4 h-4 text-primary" />
+                <Label className="text-sm font-semibold text-foreground">
+                  Customer Name
+                </Label>
+              </div>
+              <select
+                className="w-full rounded-lg border border-border bg-background text-foreground text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                value={salesReturnCustomerSelect}
+                onChange={(e) => {
+                  setSalesReturnCustomerSelect(e.target.value);
+                  if (e.target.value !== "new")
+                    setSalesReturnCustomer(e.target.value);
+                  else setSalesReturnCustomer("");
+                }}
+                data-ocid="returns.customer.select"
+              >
+                <option value="">Select customer...</option>
+                {existingCustomerNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+                <option value="new">+ New Customer</option>
+              </select>
+              {salesReturnCustomerSelect === "new" && (
+                <Input
+                  placeholder="Enter customer name"
+                  value={salesReturnCustomer}
+                  onChange={(e) => setSalesReturnCustomer(e.target.value)}
+                  className="text-sm"
+                  data-ocid="returns.customer.input"
+                />
+              )}
+            </div>
+          )}
           <h2 className="font-display font-semibold text-sm text-foreground mb-4">
             Add Return Items
           </h2>
@@ -155,7 +208,11 @@ export default function Returns() {
             </TabsContent>
 
             <TabsContent value="scanner" className="mt-4">
-              <BarcodeScanner onItemScanned={handleItemScanned} />
+              <BarcodeScanner
+                onBatchReady={(items) =>
+                  setParsedItems((prev) => [...prev, ...items])
+                }
+              />
             </TabsContent>
           </Tabs>
         </div>
