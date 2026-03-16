@@ -24,6 +24,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import { useAnalytics, useResetAllData } from "../hooks/useQueries";
 
@@ -96,6 +97,64 @@ export default function Dashboard() {
     toast.success("All data has been reset");
   };
 
+  const statCards = useMemo(() => {
+    const currentStockWeight = analytics?.currentStock.totalWeight ?? 0;
+    const currentStockPieces = Number(analytics?.currentStock.totalPieces ?? 0);
+    const salesWeight = analytics?.sales.totalWeight ?? 0;
+    const salesPieces = Number(analytics?.sales.totalPieces ?? 0);
+    const purchasesWeight = analytics?.purchases.totalWeight ?? 0;
+    const purchasesPieces = Number(analytics?.purchases.totalPieces ?? 0);
+    const purchaseReturnsWeight = analytics?.purchaseReturns.totalWeight ?? 0;
+    const purchaseReturnsPieces = Number(
+      analytics?.purchaseReturns.totalPieces ?? 0,
+    );
+    const salesReturnsWeight = analytics?.salesReturns.totalWeight ?? 0;
+    const salesReturnsPieces = Number(analytics?.salesReturns.totalPieces ?? 0);
+
+    return [
+      {
+        label: "Current Stock",
+        weight: currentStockWeight,
+        pieces: currentStockPieces,
+        icon: Boxes,
+        theme: cardThemes.stock,
+        onClick: () => navigate({ to: "/stock" }),
+      },
+      {
+        label: "Sales",
+        weight: salesWeight,
+        pieces: salesPieces,
+        icon: ShoppingCart,
+        theme: cardThemes.sales,
+        onClick: () => navigate({ to: "/sales" }),
+      },
+      {
+        label: "Purchases",
+        weight: purchasesWeight,
+        pieces: purchasesPieces,
+        icon: Package,
+        theme: cardThemes.purchases,
+        onClick: () => navigate({ to: "/purchases" }),
+      },
+      {
+        label: "Purchase Returns",
+        weight: purchaseReturnsWeight,
+        pieces: purchaseReturnsPieces,
+        icon: TrendingDown,
+        theme: cardThemes.purchaseReturns,
+        onClick: () => navigate({ to: "/returns" }),
+      },
+      {
+        label: "Sales Returns",
+        weight: salesReturnsWeight,
+        pieces: salesReturnsPieces,
+        icon: TrendingUp,
+        theme: cardThemes.salesReturns,
+        onClick: () => navigate({ to: "/returns" }),
+      },
+    ];
+  }, [analytics, navigate]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -106,62 +165,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const currentStockWeight = analytics?.currentStock.totalWeight ?? 0;
-  const currentStockPieces = Number(analytics?.currentStock.totalPieces ?? 0);
-  const salesWeight = analytics?.sales.totalWeight ?? 0;
-  const salesPieces = Number(analytics?.sales.totalPieces ?? 0);
-  const purchasesWeight = analytics?.purchases.totalWeight ?? 0;
-  const purchasesPieces = Number(analytics?.purchases.totalPieces ?? 0);
-  const purchaseReturnsWeight = analytics?.purchaseReturns.totalWeight ?? 0;
-  const purchaseReturnsPieces = Number(
-    analytics?.purchaseReturns.totalPieces ?? 0,
-  );
-  const salesReturnsWeight = analytics?.salesReturns.totalWeight ?? 0;
-  const salesReturnsPieces = Number(analytics?.salesReturns.totalPieces ?? 0);
-
-  const statCards = [
-    {
-      label: "Current Stock",
-      weight: currentStockWeight,
-      pieces: currentStockPieces,
-      icon: Boxes,
-      theme: cardThemes.stock,
-      onClick: () => navigate({ to: "/stock" }),
-    },
-    {
-      label: "Sales",
-      weight: salesWeight,
-      pieces: salesPieces,
-      icon: ShoppingCart,
-      theme: cardThemes.sales,
-      onClick: () => navigate({ to: "/sales" }),
-    },
-    {
-      label: "Purchases",
-      weight: purchasesWeight,
-      pieces: purchasesPieces,
-      icon: Package,
-      theme: cardThemes.purchases,
-      onClick: () => navigate({ to: "/purchases" }),
-    },
-    {
-      label: "Purchase Returns",
-      weight: purchaseReturnsWeight,
-      pieces: purchaseReturnsPieces,
-      icon: TrendingDown,
-      theme: cardThemes.purchaseReturns,
-      onClick: () => navigate({ to: "/returns" }),
-    },
-    {
-      label: "Sales Returns",
-      weight: salesReturnsWeight,
-      pieces: salesReturnsPieces,
-      icon: TrendingUp,
-      theme: cardThemes.salesReturns,
-      onClick: () => navigate({ to: "/returns" }),
-    },
-  ];
 
   return (
     <div className="space-y-8">

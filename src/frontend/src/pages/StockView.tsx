@@ -57,14 +57,18 @@ export default function StockView() {
     return { gw: stockGW, nw: stockNW, pcs: stockPCS };
   }, [analytics, liveStock]);
 
-  const reportData = liveStock.map((item) => ({
-    Code: item.code,
-    GW: item.grossWeight.toFixed(3),
-    SW: item.stoneWeight.toFixed(3),
-    NW: item.netWeight.toFixed(3),
-    PCS: Number(item.pieces),
-    Type: item.itemType,
-  }));
+  const reportData = useMemo(
+    () =>
+      liveStock.map((item) => ({
+        Code: item.code,
+        GW: item.grossWeight.toFixed(3),
+        SW: item.stoneWeight.toFixed(3),
+        NW: item.netWeight.toFixed(3),
+        PCS: Number(item.pieces),
+        Type: item.itemType,
+      })),
+    [liveStock],
+  );
 
   if (isLoading) {
     return (

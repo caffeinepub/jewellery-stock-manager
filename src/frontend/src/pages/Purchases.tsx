@@ -7,12 +7,14 @@ import ExcelUploader from "../components/ExcelUploader";
 import ManualEntryForm from "../components/ManualEntryForm";
 import TransactionPreview from "../components/TransactionPreview";
 import TransactionTotalsView from "../components/TransactionTotalsView";
+import { useAuth } from "../contexts/AuthContext";
 import { useTransactionsByType } from "../hooks/useQueries";
 import type { ParsedItem } from "../utils/scannerParser";
 
 export default function Purchases() {
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
   const [inputTab, setInputTab] = useState("excel");
+  const { currentUser } = useAuth();
 
   const { data: purchaseTransactions } = useTransactionsByType(
     ItemType.purchase,
@@ -50,6 +52,7 @@ export default function Purchases() {
           <TransactionPreview
             items={parsedItems}
             transactionType="purchase"
+            staffName={currentUser?.username}
             onConfirm={handleConfirm}
             onCancel={handleCancel}
           />
@@ -65,21 +68,21 @@ export default function Purchases() {
               <TabsList className="mb-4 bg-warning/10">
                 <TabsTrigger
                   value="excel"
-                  className="gap-2 text-xs data-[state=active]:bg-warning data-[state=active]:text-white"
+                  className="tab-active-warning gap-2 text-xs text-foreground"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
                   Excel
                 </TabsTrigger>
                 <TabsTrigger
                   value="manual"
-                  className="gap-2 text-xs data-[state=active]:bg-warning data-[state=active]:text-white"
+                  className="tab-active-warning gap-2 text-xs text-foreground"
                 >
                   <PenLine className="w-3.5 h-3.5" />
                   Manual
                 </TabsTrigger>
                 <TabsTrigger
                   value="scan"
-                  className="gap-2 text-xs data-[state=active]:bg-warning data-[state=active]:text-white"
+                  className="tab-active-warning gap-2 text-xs text-foreground"
                 >
                   <ScanLine className="w-3.5 h-3.5" />
                   Scan
@@ -117,8 +120,10 @@ export default function Purchases() {
                 transactions={purchaseTransactions}
                 title=""
                 showReportDownloader
+                twoSectionExport
                 colorTheme="amber"
                 hideCustomer
+                showStaffName
               />
             </div>
           )}

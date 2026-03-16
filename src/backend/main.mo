@@ -128,6 +128,68 @@ actor {
     };
   };
 
+  // Private synchronous helper — no await, safe to call in loops
+  func addTransactionInternal(
+    code : Text,
+    transactionType : ItemType,
+    timestamp : Int,
+    customerName : ?Text,
+    quantity : Nat,
+    netWeight : Float,
+    transactionCode : Text,
+    metalPurity : ?Float,
+    metalBalance : ?Float,
+    stoneChargePerGram : ?Float,
+    cashBalance : ?Float,
+  ) : Text {
+    switch (items.get(code)) {
+      case (null) { "Item not found" };
+      case (?item) {
+        if (transactionType == #sale and item.isSold) {
+          return "Item already sold";
+        };
+
+        let updatedItem = {
+          item with
+          itemType = transactionType;
+          isSold = (transactionType == #sale);
+        };
+
+        let record : TransactionRecord = {
+          id = nextTransactionId;
+          item = updatedItem;
+          transactionType;
+          timestamp;
+          customerName;
+          quantity;
+          netWeight;
+          transactionCode;
+          metalPurity;
+          metalBalance;
+          stoneChargePerGram;
+          cashBalance;
+        };
+
+        items.add(code, updatedItem);
+        transactions.add(nextTransactionId, record);
+        nextTransactionId += 1;
+
+        // Update customer history for sales AND sales returns
+        switch (customerName, transactionType) {
+          case (?name, #sale) {
+            upsertCustomerTransaction(name, record, ?updatedItem);
+          };
+          case (?name, #salesReturn) {
+            upsertCustomerTransaction(name, record, null);
+          };
+          case (_, _) {};
+        };
+
+        "Transaction successful";
+      };
+    };
+  };
+
   public shared ({ caller }) func addItem(
     code : Text,
     grossWeight : Float,
@@ -176,60 +238,26 @@ actor {
     stoneChargePerGram : ?Float,
     cashBalance : ?Float,
   ) : async Text {
-    switch (items.get(code)) {
-      case (null) { "Item not found" };
-      case (?item) {
-        if (transactionType == #sale and item.isSold) {
-          return "Item already sold";
-        };
-
-        let updatedItem = {
-          item with
-          itemType = transactionType;
-          isSold = (transactionType == #sale);
-        };
-
-        let record : TransactionRecord = {
-          id = nextTransactionId;
-          item = updatedItem;
-          transactionType;
-          timestamp;
-          customerName;
-          quantity;
-          netWeight;
-          transactionCode;
-          metalPurity;
-          metalBalance;
-          stoneChargePerGram;
-          cashBalance;
-        };
-
-        items.add(code, updatedItem);
-        transactions.add(nextTransactionId, record);
-        nextTransactionId += 1;
-
-        // Update customer history for sales AND sales returns
-        switch (customerName, transactionType) {
-          case (?name, #sale) {
-            upsertCustomerTransaction(name, record, ?updatedItem);
-          };
-          case (?name, #salesReturn) {
-            // For returns, add to history but do NOT add to currentHoldings
-            upsertCustomerTransaction(name, record, null);
-          };
-          case (_, _) {};
-        };
-
-        "Transaction successful";
-      };
-    };
+    addTransactionInternal(
+      code,
+      transactionType,
+      timestamp,
+      customerName,
+      quantity,
+      netWeight,
+      transactionCode,
+      metalPurity,
+      metalBalance,
+      stoneChargePerGram,
+      cashBalance,
+    );
   };
 
-  // Batch transactions with extended fields
+  // Batch transactions — uses synchronous helper, no await-in-loop
   public shared ({ caller }) func addBatchTransactions(transactionsArray : [TransactionInput]) : async [Text] {
     var results : [Text] = [];
     for (transaction in transactionsArray.values()) {
-      let result = await addTransaction(
+      let result = addTransactionInternal(
         transaction.code,
         transaction.transactionType,
         transaction.timestamp,

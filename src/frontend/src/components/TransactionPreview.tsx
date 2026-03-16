@@ -23,7 +23,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { ItemType } from "../backend";
+import { ItemType, type TransactionInput } from "../backend";
 import { useAddBatchItems, useAddBatchTransactions } from "../hooks/useQueries";
 import type { ParsedItem } from "../utils/scannerParser";
 
@@ -31,6 +31,7 @@ interface TransactionPreviewProps {
   items: ParsedItem[];
   transactionType: "sale" | "purchase" | "purchaseReturn" | "salesReturn";
   customerName?: string;
+  staffName?: string;
   onConfirm?: () => void;
   onCancel?: () => void;
 }
@@ -73,6 +74,7 @@ export default function TransactionPreview({
   items,
   transactionType,
   customerName,
+  staffName,
   onConfirm,
   onCancel,
 }: TransactionPreviewProps) {
@@ -271,23 +273,44 @@ export default function TransactionPreview({
       await addBatchTransactions.mutateAsync(
         validItems.map((item) => {
           const calc = getItemCalcValues(item);
-          return {
+          const trimmedCustomer = customerName?.trim();
+          const txInput: TransactionInput = {
             code: item.code,
             transactionType: itemType,
             timestamp,
-            customerName: customerName?.trim()
-              ? customerName.trim()
-              : undefined,
             quantity: BigInt(item.pieces ?? 0),
             netWeight: item.netWeight ?? 0,
             transactionCode: item.code,
-            metalPurity: calc.metalPurity,
-            metalBalance: calc.metalBalance,
-            stoneChargePerGram: calc.stoneChargePerGram,
-            cashBalance: calc.cashBalance,
+            ...(trimmedCustomer ? { customerName: trimmedCustomer } : {}),
+            ...(calc.metalPurity != null
+              ? { metalPurity: calc.metalPurity }
+              : {}),
+            ...(calc.metalBalance != null
+              ? { metalBalance: calc.metalBalance }
+              : {}),
+            ...(calc.stoneChargePerGram != null
+              ? { stoneChargePerGram: calc.stoneChargePerGram }
+              : {}),
+            ...(calc.cashBalance != null
+              ? { cashBalance: calc.cashBalance }
+              : {}),
           };
+          return txInput;
         }),
       );
+
+      // Save staff name for each transaction code
+      if (staffName) {
+        try {
+          const records = JSON.parse(
+            localStorage.getItem("jewel_staff_records") || "{}",
+          ) as Record<string, string>;
+          for (const item of validItems) {
+            records[item.code] = staffName;
+          }
+          localStorage.setItem("jewel_staff_records", JSON.stringify(records));
+        } catch {}
+      }
 
       setShowConfirmDialog(false);
       onConfirm?.();

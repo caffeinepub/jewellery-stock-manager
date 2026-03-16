@@ -6,20 +6,29 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import Layout from "./components/Layout";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Customers from "./pages/Customers";
 import Dashboard from "./pages/Dashboard";
 import Factory from "./pages/Factory";
+import Login from "./pages/Login";
+import Profile from "./pages/Profile";
 import Purchases from "./pages/Purchases";
 import Returns from "./pages/Returns";
 import Sales from "./pages/Sales";
 import StockView from "./pages/StockView";
 
-const rootRoute = createRootRoute({
-  component: () => (
+function RootComponent() {
+  const { currentUser } = useAuth();
+  if (!currentUser) return <Login />;
+  return (
     <Layout>
       <Outlet />
     </Layout>
-  ),
+  );
+}
+
+const rootRoute = createRootRoute({
+  component: RootComponent,
 });
 
 const indexRoute = createRoute({
@@ -64,6 +73,12 @@ const factoryRoute = createRoute({
   component: Factory,
 });
 
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/profile",
+  component: Profile,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   salesRoute,
@@ -72,6 +87,7 @@ const routeTree = rootRoute.addChildren([
   stockRoute,
   customersRoute,
   factoryRoute,
+  profileRoute,
 ]);
 
 const router = createRouter({ routeTree });
@@ -83,5 +99,9 @@ declare module "@tanstack/react-router" {
 }
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }

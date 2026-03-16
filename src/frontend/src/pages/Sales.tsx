@@ -16,6 +16,7 @@ import ExcelUploader from "../components/ExcelUploader";
 import ManualEntryForm from "../components/ManualEntryForm";
 import TransactionPreview from "../components/TransactionPreview";
 import TransactionTotalsView from "../components/TransactionTotalsView";
+import { useAuth } from "../contexts/AuthContext";
 import {
   useAvailableStock,
   useCustomers,
@@ -28,6 +29,7 @@ export default function Sales() {
   const [customerName, setCustomerName] = useState("");
   const [customerSelectVal, setCustomerSelectVal] = useState("");
   const [inputTab, setInputTab] = useState("excel");
+  const { currentUser } = useAuth();
 
   const { data: stockItems } = useAvailableStock(ItemType.purchase);
   const { data: salesTransactions } = useTransactionsByType(ItemType.sale);
@@ -92,6 +94,7 @@ export default function Sales() {
             items={parsedItems}
             transactionType="sale"
             customerName={customerName}
+            staffName={currentUser?.username}
             onConfirm={handleConfirm}
             onCancel={handleCancel}
           />
@@ -149,28 +152,28 @@ export default function Sales() {
               <TabsList className="mb-4 bg-success/10">
                 <TabsTrigger
                   value="excel"
-                  className="gap-2 text-xs data-[state=active]:bg-success data-[state=active]:text-white"
+                  className="tab-active-success gap-2 text-xs text-foreground"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
                   Excel
                 </TabsTrigger>
                 <TabsTrigger
                   value="manual"
-                  className="gap-2 text-xs data-[state=active]:bg-success data-[state=active]:text-white"
+                  className="tab-active-success gap-2 text-xs text-foreground"
                 >
                   <PenLine className="w-3.5 h-3.5" />
                   Manual
                 </TabsTrigger>
                 <TabsTrigger
                   value="scan"
-                  className="gap-2 text-xs data-[state=active]:bg-success data-[state=active]:text-white"
+                  className="tab-active-success gap-2 text-xs text-foreground"
                 >
                   <ScanLine className="w-3.5 h-3.5" />
                   Scan
                 </TabsTrigger>
                 <TabsTrigger
                   value="stock"
-                  className="gap-2 text-xs data-[state=active]:bg-success data-[state=active]:text-white"
+                  className="tab-active-success gap-2 text-xs text-foreground"
                 >
                   <Users className="w-3.5 h-3.5" />
                   Stock
@@ -214,7 +217,9 @@ export default function Sales() {
                 transactions={salesTransactions}
                 title=""
                 showReportDownloader
+                twoSectionExport
                 colorTheme="green"
+                showStaffName
               />
             </div>
           )}

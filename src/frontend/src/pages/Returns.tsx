@@ -15,6 +15,7 @@ import ExcelUploader from "../components/ExcelUploader";
 import ManualEntryForm from "../components/ManualEntryForm";
 import TransactionPreview from "../components/TransactionPreview";
 import TransactionTotalsView from "../components/TransactionTotalsView";
+import { useAuth } from "../contexts/AuthContext";
 import { useCustomers, useTransactionsByType } from "../hooks/useQueries";
 import type { ParsedItem } from "../utils/scannerParser";
 
@@ -28,6 +29,7 @@ export default function Returns() {
     useState("");
   const [salesReturnCustomer, setSalesReturnCustomer] = useState("");
 
+  const { currentUser } = useAuth();
   const { data: customers } = useCustomers();
   const existingCustomerNames = (customers ?? []).map((c) => c.name);
 
@@ -56,6 +58,11 @@ export default function Returns() {
   const handleItemAdded = (item: ParsedItem) => {
     setParsedItems((prev) => [...prev, item]);
   };
+
+  const isSalesReturn = returnType === "salesReturn";
+  const activeTabClass = isSalesReturn
+    ? "tab-active-destructive"
+    : "tab-active-primary";
 
   return (
     <div className="space-y-6">
@@ -113,17 +120,14 @@ export default function Returns() {
       {parsedItems.length > 0 ? (
         <div
           className={`bg-card border border-border rounded-2xl p-6 shadow-soft ${
-            returnType === "salesReturn"
-              ? "section-card-rose"
-              : "section-card-violet"
+            isSalesReturn ? "section-card-rose" : "section-card-violet"
           }`}
         >
           <TransactionPreview
             items={parsedItems}
             transactionType={returnType}
-            customerName={
-              returnType === "salesReturn" ? salesReturnCustomer : undefined
-            }
+            customerName={isSalesReturn ? salesReturnCustomer : undefined}
+            staffName={currentUser?.username}
             onConfirm={handleConfirm}
             onCancel={handleCancel}
           />
@@ -131,12 +135,10 @@ export default function Returns() {
       ) : (
         <div
           className={`bg-card border border-border rounded-2xl p-5 shadow-soft ${
-            returnType === "salesReturn"
-              ? "section-card-rose"
-              : "section-card-violet"
+            isSalesReturn ? "section-card-rose" : "section-card-violet"
           }`}
         >
-          {returnType === "salesReturn" && parsedItems.length === 0 && (
+          {isSalesReturn && parsedItems.length === 0 && (
             <div className="mb-4 space-y-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-primary" />
@@ -180,20 +182,27 @@ export default function Returns() {
           <Tabs value={inputTab} onValueChange={setInputTab}>
             <TabsList
               className={`mb-4 ${
-                returnType === "salesReturn"
-                  ? "bg-destructive/10"
-                  : "bg-primary/10"
+                isSalesReturn ? "bg-destructive/10" : "bg-primary/10"
               }`}
             >
-              <TabsTrigger value="excel" className="gap-1.5 text-xs">
+              <TabsTrigger
+                value="excel"
+                className={`${activeTabClass} gap-1.5 text-xs text-foreground`}
+              >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 Excel
               </TabsTrigger>
-              <TabsTrigger value="manual" className="gap-1.5 text-xs">
+              <TabsTrigger
+                value="manual"
+                className={`${activeTabClass} gap-1.5 text-xs text-foreground`}
+              >
                 <PenLine className="w-3.5 h-3.5" />
                 Manual
               </TabsTrigger>
-              <TabsTrigger value="scanner" className="gap-1.5 text-xs">
+              <TabsTrigger
+                value="scanner"
+                className={`${activeTabClass} gap-1.5 text-xs text-foreground`}
+              >
                 <ScanLine className="w-3.5 h-3.5" />
                 Scanner
               </TabsTrigger>
@@ -221,28 +230,23 @@ export default function Returns() {
       {/* Transaction History */}
       <div
         className={`bg-card border border-border rounded-2xl p-5 shadow-soft mt-4 ${
-          returnType === "salesReturn"
-            ? "section-card-rose"
-            : "section-card-violet"
+          isSalesReturn ? "section-card-rose" : "section-card-violet"
         }`}
       >
         <div className="flex items-center gap-2 mb-3">
           <div
             className={`w-2 h-6 rounded-full ${
-              returnType === "salesReturn" ? "bg-destructive" : "bg-primary"
+              isSalesReturn ? "bg-destructive" : "bg-primary"
             }`}
           />
           <h2 className="font-display font-semibold text-base text-foreground">
-            {returnType === "salesReturn"
-              ? "Sales Returns"
-              : "Purchase Returns"}{" "}
-            History
+            {isSalesReturn ? "Sales Returns" : "Purchase Returns"} History
           </h2>
         </div>
         <TransactionTotalsView
           transactions={returnTransactions}
           showReportDownloader
-          colorTheme={returnType === "salesReturn" ? "rose" : "blue"}
+          colorTheme={isSalesReturn ? "rose" : "blue"}
         />
       </div>
     </div>

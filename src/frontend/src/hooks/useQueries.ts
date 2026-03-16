@@ -76,7 +76,10 @@ export function useAnalytics() {
       };
     },
     enabled: !!actor && !isFetching,
-    staleTime: 0,
+    // Cache for 30s to avoid redundant backend fetches on every navigation
+    staleTime: 30_000,
+    // Keep previous data while refreshing so dashboard never blanks out
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -90,7 +93,8 @@ export function useStock() {
       return actor.getAllItems();
     },
     enabled: !!actor && !isFetching,
-    staleTime: 0,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -125,7 +129,8 @@ export function useTransactionsByType(transactionType: ItemType) {
       return all.filter((t) => matchesVariant(t.transactionType, typeKey));
     },
     enabled: !!actor && !isFetching,
-    staleTime: 0,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -139,7 +144,8 @@ export function useCustomers() {
       return actor.getAllCustomers();
     },
     enabled: !!actor && !isFetching,
-    staleTime: 0,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -160,7 +166,8 @@ export function useFactoryLedger() {
       return filtered;
     },
     enabled: !!actor && !isFetching,
-    staleTime: 0,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 

@@ -7,21 +7,28 @@ import {
   Package,
   RotateCcw,
   ShoppingCart,
+  UserCircle,
   Users,
 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
-const navItems = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/sales", label: "Sales", icon: ShoppingCart },
-  { path: "/purchases", label: "Purchases", icon: Package },
-  { path: "/returns", label: "Returns", icon: RotateCcw },
-  { path: "/stock", label: "Stock", icon: Boxes },
-  { path: "/customers", label: "Customers", icon: Users },
-  { path: "/factory", label: "Factory", icon: Factory },
+const allNavItems = [
+  { path: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
+  { path: "/sales", label: "Sales", icon: ShoppingCart, adminOnly: false },
+  { path: "/purchases", label: "Purchases", icon: Package, adminOnly: false },
+  { path: "/returns", label: "Returns", icon: RotateCcw, adminOnly: false },
+  { path: "/stock", label: "Stock", icon: Boxes, adminOnly: true },
+  { path: "/customers", label: "Customers", icon: Users, adminOnly: true },
+  { path: "/factory", label: "Factory", icon: Factory, adminOnly: true },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const { currentUser } = useAuth();
+
+  const navItems = allNavItems.filter(
+    (item) => !item.adminOnly || currentUser?.role === "admin",
+  );
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -49,7 +56,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 JewelTrack
               </span>
               <span className="ml-2 text-xs text-indigo-300 font-medium hidden sm:inline">
-                Inventory & Ledger
+                Inventory &amp; Ledger
               </span>
             </div>
           </div>
@@ -70,12 +77,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       ? "bg-white/20 text-white shadow-sm backdrop-blur-sm border border-white/25"
                       : "text-indigo-200 hover:text-white hover:bg-white/10"
                   }`}
+                  data-ocid={`nav.${label.toLowerCase()}.link`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{label}</span>
                 </Link>
               );
             })}
+            {/* Profile link */}
+            <Link
+              to="/profile"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ml-1 ${
+                location.pathname === "/profile"
+                  ? "bg-white/20 text-white shadow-sm backdrop-blur-sm border border-white/25"
+                  : "text-indigo-200 hover:text-white hover:bg-white/10"
+              }`}
+              data-ocid="nav.profile.link"
+            >
+              <div className="w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center text-xs font-bold text-indigo-900">
+                {currentUser?.username?.[0]?.toUpperCase() ?? (
+                  <UserCircle className="w-4 h-4" />
+                )}
+              </div>
+              <span className="hidden lg:inline">{currentUser?.username}</span>
+            </Link>
           </nav>
         </div>
 
@@ -99,12 +124,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       ? "bg-white/20 text-white border border-white/25"
                       : "text-indigo-200 hover:text-white hover:bg-white/10"
                   }`}
+                  data-ocid={`nav.${label.toLowerCase()}.link`}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   <span>{label}</span>
                 </Link>
               );
             })}
+            {/* Profile link mobile */}
+            <Link
+              to="/profile"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap flex-shrink-0 ${
+                location.pathname === "/profile"
+                  ? "bg-white/20 text-white border border-white/25"
+                  : "text-indigo-200 hover:text-white hover:bg-white/10"
+              }`}
+              data-ocid="nav.profile.link"
+            >
+              <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-[10px] font-bold text-indigo-900">
+                {currentUser?.username?.[0]?.toUpperCase() ?? "?"}
+              </div>
+              <span>Profile</span>
+            </Link>
           </div>
         </div>
       </header>

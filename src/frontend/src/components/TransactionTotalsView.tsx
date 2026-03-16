@@ -12,8 +12,10 @@ interface TransactionTotalsViewProps {
   transactions: TransactionRecord[];
   title?: string;
   showReportDownloader?: boolean;
+  twoSectionExport?: boolean;
   colorTheme?: ColorTheme;
   hideCustomer?: boolean;
+  showStaffName?: boolean;
 }
 
 const themeStyles: Record<
@@ -95,14 +97,27 @@ export default function TransactionTotalsView({
   transactions,
   title,
   showReportDownloader = false,
+  twoSectionExport = false,
   colorTheme,
   hideCustomer = false,
+  showStaffName = false,
 }: TransactionTotalsViewProps) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
   const theme = colorTheme ? themeStyles[colorTheme] : defaultTheme;
+
+  const staffRecords = useMemo(() => {
+    if (!showStaffName) return {} as Record<string, string>;
+    try {
+      return JSON.parse(
+        localStorage.getItem("jewel_staff_records") || "{}",
+      ) as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }, [showStaffName]);
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
@@ -137,10 +152,90 @@ export default function TransactionTotalsView({
     setCollapsedDates(next);
   };
 
-  const reportData = filtered.map((t) => ({
+  // Build two-section export data
+  const exportSections = useMemo(() => {
+    if (!twoSectionExport) return undefined;
+
+    const plain = filtered.filter((t) => t.item.stoneWeight === 0);
+    const stone = filtered.filter((t) => t.item.stoneWeight > 0);
+
+    const sumGroup = (group: TransactionRecord[]) => ({
+      gw: group.reduce((s, t) => s + t.item.grossWeight, 0),
+      nw: group.reduce((s, t) => s + t.item.netWeight, 0),
+      sw: group.reduce((s, t) => s + t.item.stoneWeight, 0),
+      pcs: group.reduce((s, t) => s + Number(t.item.pieces), 0),
+      pureWt: group.reduce((s, t) => s + (t.metalBalance ?? 0), 0),
+      cashBal: group.reduce((s, t) => s + (t.cashBalance ?? 0), 0),
+      avgPurity:
+        group.length > 0
+          ? group
+              .filter((t) => (t.metalPurity ?? 0) > 0)
+              .reduce((s, t) => s + (t.metalPurity ?? 0), 0) /
+            Math.max(1, group.filter((t) => (t.metalPurity ?? 0) > 0).length)
+          : 0,
+    });
+
+    const ps = sumGroup(plain);
+    const ss = sumGroup(stone);
+
+    const summaryData = [
+      {
+        Category: "Plain Items (SW = 0)",
+        "Total GW (g)": ps.gw.toFixed(3),
+        "Total NW (g)": ps.nw.toFixed(3),
+        "Stone Wt (g)": "0.000",
+        "Total PCS": ps.pcs,
+        "Calc % (avg)": ps.avgPurity > 0 ? ps.avgPurity.toFixed(2) : "N/A",
+        "Pure Wt (g)": ps.pureWt.toFixed(3),
+        "Cash Balance (\u20b9)": ps.cashBal.toFixed(0),
+      },
+      {
+        Category: "Stone Items (SW > 0)",
+        "Total GW (g)": ss.gw.toFixed(3),
+        "Total NW (g)": ss.nw.toFixed(3),
+        "Stone Wt (g)": ss.sw.toFixed(3),
+        "Total PCS": ss.pcs,
+        "Calc % (avg)": ss.avgPurity > 0 ? ss.avgPurity.toFixed(2) : "N/A",
+        "Pure Wt (g)": ss.pureWt.toFixed(3),
+        "Cash Balance (\u20b9)": ss.cashBal.toFixed(0),
+      },
+      {
+        Category: "TOTAL",
+        "Total GW (g)": (ps.gw + ss.gw).toFixed(3),
+        "Total NW (g)": (ps.nw + ss.nw).toFixed(3),
+        "Stone Wt (g)": ss.sw.toFixed(3),
+        "Total PCS": ps.pcs + ss.pcs,
+        "Calc % (avg)": "",
+        "Pure Wt (g)": (ps.pureWt + ss.pureWt).toFixed(3),
+        "Cash Balance (\u20b9)": (ps.cashBal + ss.cashBal).toFixed(0),
+      },
+    ];
+
+    const detailData = filtered.map((t) => ({
+      Date: formatDate(t.timestamp),
+      Code: t.item.code,
+      Type: String(t.transactionType),
+      "GW (g)": t.item.grossWeight.toFixed(3),
+      "SW (g)": t.item.stoneWeight.toFixed(3),
+      "NW (g)": t.item.netWeight.toFixed(3),
+      PCS: Number(t.item.pieces),
+      Customer: t.customerName ?? "",
+      "Calc %": t.metalPurity ? t.metalPurity.toFixed(2) : "",
+      "Pure Wt (g)": t.metalBalance ? t.metalBalance.toFixed(3) : "",
+      "Cash Bal (\u20b9)": t.cashBalance ? t.cashBalance.toFixed(0) : "",
+    }));
+
+    return [
+      { title: "PAGE 1 \u2014 SUMMARY BY CATEGORY", data: summaryData },
+      { title: "PAGE 2 \u2014 DETAIL ROWS", data: detailData },
+    ];
+  }, [filtered, twoSectionExport]);
+
+  // Flat export data (used when twoSectionExport is false)
+  const flatReportData = filtered.map((t) => ({
     Date: formatDate(t.timestamp),
     Code: t.item.code,
-    Type: t.transactionType,
+    Type: String(t.transactionType),
     GW: t.item.grossWeight.toFixed(3),
     SW: t.item.stoneWeight.toFixed(3),
     NW: t.item.netWeight.toFixed(3),
@@ -183,7 +278,11 @@ export default function TransactionTotalsView({
             />
           </div>
           {showReportDownloader && (
-            <ReportDownloader data={reportData} filename="transactions" />
+            <ReportDownloader
+              data={exportSections ? [] : flatReportData}
+              sections={exportSections}
+              filename="transactions"
+            />
           )}
         </div>
       </div>
@@ -286,6 +385,13 @@ export default function TransactionTotalsView({
                           >
                             PCS
                           </th>
+                          {showStaffName && (
+                            <th
+                              className={`text-left px-4 py-2 text-xs font-semibold uppercase tracking-wide ${theme.headerText}`}
+                            >
+                              Staff
+                            </th>
+                          )}
                           {!hideCustomer && (
                             <th
                               className={`text-left px-4 py-2 text-xs font-semibold uppercase tracking-wide ${theme.headerText}`}
@@ -343,6 +449,11 @@ export default function TransactionTotalsView({
                             >
                               {Number(t.item.pieces)}
                             </td>
+                            {showStaffName && (
+                              <td className="px-4 py-2.5 text-muted-foreground text-xs">
+                                {staffRecords[t.item.code] || "—"}
+                              </td>
+                            )}
                             {!hideCustomer && (
                               <td className="px-4 py-2.5 text-muted-foreground text-xs">
                                 {t.customerName || "—"}

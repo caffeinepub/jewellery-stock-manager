@@ -40,7 +40,10 @@ import {
   FileSpreadsheet,
   FileText,
   Loader2,
+  Plus,
+  Scale,
   Users,
+  Wallet,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Customer, ItemType, TransactionRecord } from "../backend";
@@ -51,9 +54,64 @@ function matchesType(txType: ItemType, expectedKey: string): boolean {
   return Object.keys(txType as unknown as object)[0] === expectedKey;
 }
 
+// ── Metal Received ──────────────────────────────────────────────────────────
+interface MetalReceivedEntry {
+  id: string;
+  date: string; // ISO date string yyyy-MM-dd
+  grossWeight: number;
+  purity: number; // 95–100 as entered (percent)
+  pureWeight: number; // gw * (purity / 100)
+}
+
+function mrKey(customerName: string) {
+  return `metalRcvd_v1_${customerName}`;
+}
+
+function loadMetalReceived(customerName: string): MetalReceivedEntry[] {
+  try {
+    const stored = localStorage.getItem(mrKey(customerName));
+    return stored ? (JSON.parse(stored) as MetalReceivedEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveMetalReceived(
+  customerName: string,
+  entries: MetalReceivedEntry[],
+) {
+  localStorage.setItem(mrKey(customerName), JSON.stringify(entries));
+}
+
+// ── Cash Received ──────────────────────────────────────────────────────────
+interface CashReceivedEntry {
+  id: string;
+  date: string; // yyyy-MM-dd
+  amount: number; // cash amount in Rs
+}
+
+function crKey(customerName: string) {
+  return `cashRcvd_v1_${customerName}`;
+}
+
+function loadCashReceived(customerName: string): CashReceivedEntry[] {
+  try {
+    const stored = localStorage.getItem(crKey(customerName));
+    return stored ? (JSON.parse(stored) as CashReceivedEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCashReceived(customerName: string, entries: CashReceivedEntry[]) {
+  localStorage.setItem(crKey(customerName), JSON.stringify(entries));
+}
+
+// ── Ledger Row ──────────────────────────────────────────────────────────────
 interface LedgerRow {
   date: string;
-  type: "sale" | "salesReturn";
+  sortKey: number;
+  type: "sale" | "salesReturn" | "metalReceived" | "cashReceived";
   code: string;
   gw: number;
   nw: number;
@@ -63,62 +121,158 @@ interface LedgerRow {
   cashBalance: number | undefined;
 }
 
-function buildLedgerRows(txs: TransactionRecord[]): LedgerRow[] {
-  return txs
-    .slice()
-    .sort((a, b) => Number(a.timestamp - b.timestamp))
-    .map((tx) => {
-      const isSale = matchesType(tx.transactionType, "sale");
-      return {
-        date: format(new Date(Number(tx.timestamp) / 1000000), "dd MMM yyyy"),
-        type: isSale ? "sale" : "salesReturn",
-        code: tx.item.code,
-        gw: tx.item.grossWeight,
-        nw: tx.item.netWeight,
-        pcs: Number(tx.item.pieces),
-        metalPurity: tx.metalPurity,
-        metalBalance: tx.metalBalance,
-        cashBalance: tx.cashBalance,
-      };
-    });
+function buildLedgerRows(
+  txs: TransactionRecord[],
+  metalReceived: MetalReceivedEntry[],
+  cashReceived: CashReceivedEntry[],
+): LedgerRow[] {
+  const txRows: LedgerRow[] = txs.map((tx) => {
+    const isSale = matchesType(tx.transactionType, "sale");
+    const ts = Number(tx.timestamp) / 1000000;
+    return {
+      date: format(new Date(ts), "dd MMM yyyy"),
+      sortKey: ts,
+      type: isSale ? "sale" : "salesReturn",
+      code: tx.item.code,
+      gw: tx.item.grossWeight,
+      nw: tx.item.netWeight,
+      pcs: Number(tx.item.pieces),
+      metalPurity: tx.metalPurity,
+      metalBalance: tx.metalBalance,
+      cashBalance: tx.cashBalance,
+    };
+  });
+
+  const mrRows: LedgerRow[] = metalReceived.map((mr) => ({
+    date: format(new Date(mr.date), "dd MMM yyyy"),
+    sortKey: new Date(mr.date).getTime(),
+    type: "metalReceived",
+    code: "Metal Rcvd",
+    gw: mr.grossWeight,
+    nw: 0,
+    pcs: 0,
+    metalPurity: mr.purity,
+    metalBalance: mr.pureWeight,
+    cashBalance: undefined,
+  }));
+
+  const crRows: LedgerRow[] = cashReceived.map((cr) => ({
+    date: format(new Date(cr.date), "dd MMM yyyy"),
+    sortKey: new Date(cr.date).getTime(),
+    type: "cashReceived",
+    code: "Cash Rcvd",
+    gw: 0,
+    nw: 0,
+    pcs: 0,
+    metalPurity: undefined,
+    metalBalance: undefined,
+    cashBalance: cr.amount,
+  }));
+
+  return [...txRows, ...mrRows, ...crRows].sort(
+    (a, b) => a.sortKey - b.sortKey,
+  );
 }
 
-function exportProFormaInvoice(custName: string, rows: LedgerRow[]) {
+// ── Balance Summary ─────────────────────────────────────────────────────────
+interface BalanceSummary {
+  totalPureBalance: number;
+  totalCashBalance: number;
+}
+
+function computeBalance(rows: LedgerRow[]): BalanceSummary {
+  const salePure = rows
+    .filter((r) => r.type === "sale" && r.metalBalance != null)
+    .reduce((s, r) => s + (r.metalBalance ?? 0), 0);
+  const returnPure = rows
+    .filter((r) => r.type === "salesReturn" && r.metalBalance != null)
+    .reduce((s, r) => s + (r.metalBalance ?? 0), 0);
+  const rcvdPure = rows
+    .filter((r) => r.type === "metalReceived")
+    .reduce((s, r) => s + (r.metalBalance ?? 0), 0);
+  const saleCash = rows
+    .filter((r) => r.type === "sale" && r.cashBalance != null)
+    .reduce((s, r) => s + (r.cashBalance ?? 0), 0);
+  const returnCash = rows
+    .filter((r) => r.type === "salesReturn" && r.cashBalance != null)
+    .reduce((s, r) => s + (r.cashBalance ?? 0), 0);
+  const rcvdCash = rows
+    .filter((r) => r.type === "cashReceived")
+    .reduce((s, r) => s + (r.cashBalance ?? 0), 0);
+  return {
+    totalPureBalance: salePure - returnPure - rcvdPure,
+    totalCashBalance: saleCash - returnCash - rcvdCash,
+  };
+}
+
+// ── Exports ──────────────────────────────────────────────────────────────────
+function exportProFormaInvoice(
+  custName: string,
+  rows: LedgerRow[],
+  balance: BalanceSummary,
+) {
+  const rowsHtml = rows
+    .map(
+      (r) => `<tr>
+      <td>${r.date}</td>
+      <td><span class="badge-${r.type === "sale" ? "sale" : r.type === "salesReturn" ? "return" : r.type === "metalReceived" ? "metal" : "cash"}">${r.type === "sale" ? "Sale" : r.type === "salesReturn" ? "Return" : r.type === "metalReceived" ? "Metal Rcvd" : "Cash Rcvd"}</span></td>
+      <td><strong>${r.code}</strong></td>
+      <td>${r.type === "cashReceived" ? "—" : r.gw.toFixed(3)}</td>
+      <td>${r.type === "metalReceived" || r.type === "cashReceived" ? "—" : r.nw.toFixed(3)}</td>
+      <td>${r.metalPurity != null ? `${r.metalPurity.toFixed(2)}%` : "—"}</td>
+      <td>${r.metalBalance != null ? `${r.metalBalance.toFixed(3)}g` : "—"}</td>
+      <td>${r.type === "cashReceived" ? `&#8377;${(r.cashBalance ?? 0).toFixed(0)}` : r.cashBalance != null ? `&#8377;${r.cashBalance.toFixed(0)}` : "—"}</td>
+    </tr>`,
+    )
+    .join("");
+
   const html = `<!DOCTYPE html><html><head><title>Pro-Forma Invoice - ${custName}</title>
 <style>
   body { font-family: Arial, sans-serif; padding: 24px; font-size: 13px; }
   h1 { font-size: 20px; margin-bottom: 4px; }
   h2 { font-size: 15px; color: #555; margin-bottom: 20px; font-weight: normal; }
-  table { width: 100%; border-collapse: collapse; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
   th { background: #6c47ff; color: white; padding: 8px 10px; text-align: left; font-size: 12px; }
   td { padding: 7px 10px; border-bottom: 1px solid #eee; }
   tr:nth-child(even) { background: #f9f7ff; }
   .badge-sale { background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
   .badge-return { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+  .badge-metal { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+  .badge-cash { background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+  .summary-box { margin-top: 24px; border: 2px solid #6c47ff; border-radius: 8px; padding: 16px; background: #f9f7ff; }
+  .summary-box h3 { margin: 0 0 12px; color: #6c47ff; font-size: 14px; }
+  .summary-grid { display: flex; gap: 32px; }
+  .summary-item { flex: 1; }
+  .summary-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #888; margin-bottom: 4px; }
+  .summary-sublabel { font-size: 10px; color: #aaa; margin-top: 4px; }
+  .summary-value { font-size: 20px; font-weight: bold; color: #1a1a1a; }
+  .summary-value.positive { color: #065f46; }
+  .summary-value.cash { color: #6c47ff; }
 </style></head><body>
 <h1>Pro-Forma Invoice</h1>
 <h2>Customer: ${custName} &nbsp;|&nbsp; Date: ${new Date().toLocaleDateString("en-IN")}</h2>
 <table>
-  <thead><tr><th>Date</th><th>Type</th><th>Code</th><th>GW (g)</th><th>NW (g)</th><th>Calculation %</th><th>Pure Wt (g)</th><th>Amount (₹)</th></tr></thead>
-  <tbody>
-    ${rows
-      .map(
-        (r) => `<tr>
-      <td>${r.date}</td>
-      <td><span class="${r.type === "sale" ? "badge-sale" : "badge-return"}">${r.type === "sale" ? "Sale" : "Return"}</span></td>
-      <td><strong>${r.code}</strong></td>
-      <td>${r.gw.toFixed(3)}</td>
-      <td>${r.nw.toFixed(3)}</td>
-      <td>${r.metalPurity != null ? `${r.metalPurity.toFixed(2)}%` : "—"}</td>
-      <td>${r.metalBalance != null ? r.metalBalance.toFixed(3) : "—"}</td>
-      <td>${r.cashBalance != null ? `₹${r.cashBalance.toFixed(0)}` : "—"}</td>
-    </tr>`,
-      )
-      .join("")}
-  </tbody>
+  <thead><tr><th>Date</th><th>Type</th><th>Code</th><th>GW (g)</th><th>NW (g)</th><th>Calculation %</th><th>Pure Wt (g)</th><th>Amount (&#8377;)</th></tr></thead>
+  <tbody>${rowsHtml}</tbody>
 </table>
+<div class="summary-box">
+  <h3>Balance Summary</h3>
+  <div class="summary-grid">
+    <div class="summary-item">
+      <div class="summary-label">Total Pure Balance</div>
+      <div class="summary-value positive">${balance.totalPureBalance.toFixed(3)} g</div>
+      <div class="summary-sublabel">Sales &minus; Returns &minus; Metal Rcvd</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">Total Cash Balance</div>
+      <div class="summary-value cash">&#8377;${balance.totalCashBalance.toFixed(0)}</div>
+      <div class="summary-sublabel">Sales &minus; Returns &minus; Cash Rcvd</div>
+    </div>
+  </div>
+</div>
 <script>window.onload = function(){ window.print(); }</script>
 </body></html>`;
+
   const w = window.open("", "_blank");
   if (w) {
     w.document.write(html);
@@ -138,6 +292,8 @@ function exportOrderConfirmation(custName: string, rows: LedgerRow[]) {
   tr:nth-child(even) { background: #f0f9ff; }
   .badge-sale { background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
   .badge-return { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+  .badge-metal { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+  .badge-cash { background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
 </style></head><body>
 <h1>Order Confirmation</h1>
 <h2>Customer: ${custName} &nbsp;|&nbsp; Date: ${new Date().toLocaleDateString("en-IN")}</h2>
@@ -148,11 +304,11 @@ function exportOrderConfirmation(custName: string, rows: LedgerRow[]) {
       .map(
         (r) => `<tr>
       <td>${r.date}</td>
-      <td><span class="${r.type === "sale" ? "badge-sale" : "badge-return"}">${r.type === "sale" ? "Sale" : "Return"}</span></td>
+      <td><span class="badge-${r.type === "sale" ? "sale" : r.type === "salesReturn" ? "return" : r.type === "metalReceived" ? "metal" : "cash"}">${r.type === "sale" ? "Sale" : r.type === "salesReturn" ? "Return" : r.type === "metalReceived" ? "Metal Rcvd" : "Cash Rcvd"}</span></td>
       <td><strong>${r.code}</strong></td>
-      <td>${r.gw.toFixed(3)}</td>
-      <td>${r.nw.toFixed(3)}</td>
-      <td>${r.pcs}</td>
+      <td>${r.type === "metalReceived" || r.type === "cashReceived" ? "—" : r.gw.toFixed(3)}</td>
+      <td>${r.type === "metalReceived" || r.type === "cashReceived" ? "—" : r.nw.toFixed(3)}</td>
+      <td>${r.type === "metalReceived" || r.type === "cashReceived" ? "—" : r.pcs}</td>
     </tr>`,
       )
       .join("")}
@@ -167,7 +323,7 @@ function exportOrderConfirmation(custName: string, rows: LedgerRow[]) {
   }
 }
 
-// Isolated component: receives ONE customer and renders all its data
+// ── CustomerView ─────────────────────────────────────────────────────────────
 function CustomerView({
   customer,
   onRename,
@@ -180,9 +336,80 @@ function CustomerView({
     to: Date | undefined;
   }>({ from: undefined, to: undefined });
 
+  // Metal Received state
+  const [metalReceivedEntries, setMetalReceivedEntries] = useState<
+    MetalReceivedEntry[]
+  >(() => loadMetalReceived(customer.name));
+  const [showAddMR, setShowAddMR] = useState(false);
+  const [mrDate, setMrDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [mrGw, setMrGw] = useState("");
+  const [mrPurity, setMrPurity] = useState("");
+
+  const handleAddMR = () => {
+    const gw = Number.parseFloat(mrGw);
+    const purity = Number.parseFloat(mrPurity);
+    if (
+      Number.isNaN(gw) ||
+      gw <= 0 ||
+      Number.isNaN(purity) ||
+      purity <= 0 ||
+      purity > 100
+    )
+      return;
+    const entry: MetalReceivedEntry = {
+      id: `${Date.now()}_${Math.random()}`,
+      date: mrDate,
+      grossWeight: gw,
+      purity,
+      pureWeight: gw * (purity / 100),
+    };
+    const updated = [...metalReceivedEntries, entry];
+    setMetalReceivedEntries(updated);
+    saveMetalReceived(customer.name, updated);
+    setMrGw("");
+    setMrPurity("");
+    setMrDate(format(new Date(), "yyyy-MM-dd"));
+    setShowAddMR(false);
+  };
+
+  const handleDeleteMR = (id: string) => {
+    const updated = metalReceivedEntries.filter((e) => e.id !== id);
+    setMetalReceivedEntries(updated);
+    saveMetalReceived(customer.name, updated);
+  };
+
+  // Cash Received state
+  const [cashReceivedEntries, setCashReceivedEntries] = useState<
+    CashReceivedEntry[]
+  >(() => loadCashReceived(customer.name));
+  const [showAddCR, setShowAddCR] = useState(false);
+  const [crDate, setCrDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [crAmount, setCrAmount] = useState("");
+
+  const handleAddCR = () => {
+    const amount = Number.parseFloat(crAmount);
+    if (Number.isNaN(amount) || amount <= 0) return;
+    const entry: CashReceivedEntry = {
+      id: `${Date.now()}_${Math.random()}`,
+      date: crDate,
+      amount,
+    };
+    const updated = [...cashReceivedEntries, entry];
+    setCashReceivedEntries(updated);
+    saveCashReceived(customer.name, updated);
+    setCrAmount("");
+    setCrDate(format(new Date(), "yyyy-MM-dd"));
+    setShowAddCR(false);
+  };
+
+  const handleDeleteCR = (id: string) => {
+    const updated = cashReceivedEntries.filter((e) => e.id !== id);
+    setCashReceivedEntries(updated);
+    saveCashReceived(customer.name, updated);
+  };
+
   const { salesTransactions, returnTransactions } = useMemo(() => {
     let filtered = customer.transactionHistory;
-
     if (dateRange.from) {
       const fromTs = BigInt(dateRange.from.getTime() * 1000000);
       filtered = filtered.filter((tx) => tx.timestamp >= fromTs);
@@ -193,7 +420,6 @@ function CustomerView({
       const toTs = BigInt(toDate.getTime() * 1000000);
       filtered = filtered.filter((tx) => tx.timestamp <= toTs);
     }
-
     const sales = filtered.filter((tx) =>
       matchesType(tx.transactionType, "sale"),
     );
@@ -217,8 +443,40 @@ function CustomerView({
   );
 
   const ledgerRows = useMemo(
-    () => buildLedgerRows([...salesTransactions, ...returnTransactions]),
-    [salesTransactions, returnTransactions],
+    () =>
+      buildLedgerRows(
+        [...salesTransactions, ...returnTransactions],
+        metalReceivedEntries,
+        cashReceivedEntries,
+      ),
+    [
+      salesTransactions,
+      returnTransactions,
+      metalReceivedEntries,
+      cashReceivedEntries,
+    ],
+  );
+
+  const balance = useMemo(() => computeBalance(ledgerRows), [ledgerRows]);
+
+  const sortedMetalEntries = useMemo(
+    () =>
+      metalReceivedEntries
+        .slice()
+        .sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        ),
+    [metalReceivedEntries],
+  );
+
+  const sortedCashEntries = useMemo(
+    () =>
+      cashReceivedEntries
+        .slice()
+        .sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        ),
+    [cashReceivedEntries],
   );
 
   return (
@@ -241,8 +499,8 @@ function CustomerView({
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 rounded-2xl p-5 shadow-soft">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 rounded-2xl p-4 shadow-soft">
           <p className="text-xs font-medium text-emerald-700 uppercase tracking-wide mb-1">
             Total Sales
           </p>
@@ -250,7 +508,7 @@ function CustomerView({
             {customerTotals.salesCount}
           </p>
         </div>
-        <div className="bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 rounded-2xl p-5 shadow-soft">
+        <div className="bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 rounded-2xl p-4 shadow-soft">
           <p className="text-xs font-medium text-amber-700 uppercase tracking-wide mb-1">
             Total Returns
           </p>
@@ -258,7 +516,7 @@ function CustomerView({
             {customerTotals.returnsCount}
           </p>
         </div>
-        <div className="bg-gradient-to-br from-violet-50 to-purple-100 border border-violet-200 rounded-2xl p-5 shadow-soft">
+        <div className="bg-gradient-to-br from-violet-50 to-purple-100 border border-violet-200 rounded-2xl p-4 shadow-soft">
           <p className="text-xs font-medium text-violet-700 uppercase tracking-wide mb-1">
             Total GW (Sales)
           </p>
@@ -266,12 +524,43 @@ function CustomerView({
             {customerTotals.totalGW.toFixed(2)}g
           </p>
         </div>
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-5 shadow-soft">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-4 shadow-soft">
           <p className="text-xs font-medium text-blue-700 uppercase tracking-wide mb-1">
             Total PCS (Sales)
           </p>
           <p className="text-2xl font-display font-bold text-blue-900">
             {customerTotals.totalPCS}
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-teal-50 to-cyan-100 border border-teal-200 rounded-2xl p-4 shadow-soft">
+          <p className="text-xs font-medium text-teal-700 uppercase tracking-wide mb-1">
+            Pure Balance
+          </p>
+          <p
+            className={`text-xl font-display font-bold ${
+              balance.totalPureBalance >= 0
+                ? "text-teal-900"
+                : "text-destructive"
+            }`}
+          >
+            {balance.totalPureBalance.toFixed(3)}g
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-2xl p-4 shadow-soft">
+          <p className="text-xs font-medium text-green-700 uppercase tracking-wide mb-1">
+            Cash Balance
+          </p>
+          <p
+            className={`text-xl font-display font-bold ${
+              balance.totalCashBalance >= 0
+                ? "text-green-900"
+                : "text-destructive"
+            }`}
+          >
+            ₹{balance.totalCashBalance.toFixed(0)}
+          </p>
+          <p className="text-xs text-green-600 mt-0.5">
+            Sales − Returns − Cash Rcvd
           </p>
         </div>
       </div>
@@ -501,7 +790,7 @@ function CustomerView({
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem
                   onClick={() =>
-                    exportProFormaInvoice(customer.name, ledgerRows)
+                    exportProFormaInvoice(customer.name, ledgerRows, balance)
                   }
                   className="gap-2 cursor-pointer"
                   data-ocid="customers.ledger.button"
@@ -523,6 +812,7 @@ function CustomerView({
             </DropdownMenu>
           )}
         </div>
+
         {ledgerRows.length === 0 ? (
           <p
             className="text-center text-muted-foreground text-sm py-8"
@@ -559,13 +849,17 @@ function CustomerView({
                 <TableBody>
                   {ledgerRows.map((row, idx) => (
                     <TableRow
-                      key={`ledger-${row.date}-${row.code}-${idx}`}
+                      key={`ledger-${row.sortKey}-${row.code}-${idx}`}
                       className={`transition-colors ${
                         idx % 2 === 0 ? "bg-violet-50/30" : ""
                       } ${
                         row.type === "sale"
                           ? "hover:bg-success/5"
-                          : "hover:bg-destructive/5"
+                          : row.type === "salesReturn"
+                            ? "hover:bg-destructive/5"
+                            : row.type === "metalReceived"
+                              ? "hover:bg-amber-50"
+                              : "hover:bg-emerald-50"
                       }`}
                       data-ocid={`customers.ledger.item.${idx + 1}`}
                     >
@@ -575,20 +869,33 @@ function CustomerView({
                           className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                             row.type === "sale"
                               ? "bg-success/10 text-success"
-                              : "bg-destructive/10 text-destructive"
+                              : row.type === "salesReturn"
+                                ? "bg-destructive/10 text-destructive"
+                                : row.type === "metalReceived"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-emerald-100 text-emerald-800"
                           }`}
                         >
-                          {row.type === "sale" ? "Sale" : "Return"}
+                          {row.type === "sale"
+                            ? "Sale"
+                            : row.type === "salesReturn"
+                              ? "Return"
+                              : row.type === "metalReceived"
+                                ? "Metal Rcvd"
+                                : "Cash Rcvd"}
                         </span>
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {row.code}
                       </TableCell>
                       <TableCell className="text-right text-sm font-medium text-violet-800">
-                        {row.gw.toFixed(3)}
+                        {row.type === "cashReceived" ? "—" : row.gw.toFixed(3)}
                       </TableCell>
                       <TableCell className="text-right text-sm text-violet-700">
-                        {row.nw.toFixed(3)}
+                        {row.type === "metalReceived" ||
+                        row.type === "cashReceived"
+                          ? "—"
+                          : row.nw.toFixed(3)}
                       </TableCell>
                       <TableCell className="text-right">
                         {row.metalPurity != null ? (
@@ -601,7 +908,13 @@ function CustomerView({
                       </TableCell>
                       <TableCell className="text-right">
                         {row.metalBalance != null ? (
-                          <span className="text-emerald-700 font-semibold">
+                          <span
+                            className={`font-semibold ${
+                              row.type === "metalReceived"
+                                ? "text-amber-700"
+                                : "text-emerald-700"
+                            }`}
+                          >
                             {row.metalBalance.toFixed(3)}g
                           </span>
                         ) : (
@@ -609,7 +922,11 @@ function CustomerView({
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {row.cashBalance != null ? (
+                        {row.type === "cashReceived" ? (
+                          <span className="text-emerald-700 font-bold">
+                            ₹{(row.cashBalance ?? 0).toFixed(0)}
+                          </span>
+                        ) : row.cashBalance != null ? (
                           <span className="text-primary font-bold">
                             ₹{row.cashBalance.toFixed(0)}
                           </span>
@@ -624,11 +941,333 @@ function CustomerView({
             </div>
           </div>
         )}
+
+        {/* Balance Summary below ledger */}
+        {ledgerRows.length > 0 && (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-gradient-to-br from-teal-50 to-emerald-100 border border-teal-200 p-4">
+              <p className="text-xs font-medium text-teal-700 uppercase tracking-wide mb-1">
+                Total Pure Balance
+              </p>
+              <p
+                className={`text-xl font-display font-bold ${
+                  balance.totalPureBalance >= 0
+                    ? "text-teal-900"
+                    : "text-destructive"
+                }`}
+              >
+                {balance.totalPureBalance.toFixed(3)} g
+              </p>
+              <p className="text-xs text-teal-600 mt-1">
+                Sales − Returns − Metal Rcvd
+              </p>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-violet-50 to-purple-100 border border-violet-200 p-4">
+              <p className="text-xs font-medium text-violet-700 uppercase tracking-wide mb-1">
+                Total Cash Balance
+              </p>
+              <p
+                className={`text-xl font-display font-bold ${
+                  balance.totalCashBalance >= 0
+                    ? "text-violet-900"
+                    : "text-destructive"
+                }`}
+              >
+                ₹{balance.totalCashBalance.toFixed(0)}
+              </p>
+              <p className="text-xs text-violet-600 mt-1">
+                Sales − Returns − Cash Rcvd
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Metal Received Section */}
+      <div className="bg-card border border-border rounded-2xl p-5 shadow-soft section-card-amber">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-5 rounded-full bg-warning" />
+            <h2 className="font-display font-semibold text-sm text-foreground">
+              Metal Received
+            </h2>
+          </div>
+          <Button
+            size="sm"
+            className="gap-2 bg-warning text-warning-foreground hover:bg-warning/90"
+            onClick={() => setShowAddMR((v) => !v)}
+            data-ocid="customers.metalrcvd.open_modal_button"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Entry
+          </Button>
+        </div>
+
+        {/* Add form */}
+        {showAddMR && (
+          <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-amber-800">
+                  Date
+                </Label>
+                <Input
+                  type="date"
+                  value={mrDate}
+                  onChange={(e) => setMrDate(e.target.value)}
+                  className="text-sm"
+                  data-ocid="customers.metalrcvd.input"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-amber-800">
+                  Gross Weight (g)
+                </Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 50.000"
+                  value={mrGw}
+                  onChange={(e) => setMrGw(e.target.value)}
+                  className="text-sm"
+                  data-ocid="customers.metalrcvd.input"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-amber-800">
+                  Purity % (95–100)
+                </Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 97.50"
+                  min="1"
+                  max="100"
+                  value={mrPurity}
+                  onChange={(e) => setMrPurity(e.target.value)}
+                  className="text-sm"
+                  data-ocid="customers.metalrcvd.input"
+                />
+              </div>
+            </div>
+            {mrGw && mrPurity && (
+              <p className="text-xs text-amber-700 font-medium">
+                Pure Wt ={" "}
+                {(
+                  Number.parseFloat(mrGw) *
+                  (Number.parseFloat(mrPurity) / 100)
+                ).toFixed(3)}
+                g
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleAddMR}
+                className="bg-warning text-warning-foreground hover:bg-warning/90"
+                data-ocid="customers.metalrcvd.submit_button"
+              >
+                <Scale className="w-3.5 h-3.5 mr-1.5" />
+                Save Entry
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowAddMR(false)}
+                data-ocid="customers.metalrcvd.cancel_button"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {metalReceivedEntries.length === 0 ? (
+          <p className="text-center text-muted-foreground text-sm py-6">
+            No metal received entries yet
+          </p>
+        ) : (
+          <div className="rounded-xl border overflow-hidden overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="thead-amber">
+                  <TableHead className="font-semibold">Date</TableHead>
+                  <TableHead className="text-right font-semibold">
+                    GW (g)
+                  </TableHead>
+                  <TableHead className="text-right font-semibold">
+                    Purity %
+                  </TableHead>
+                  <TableHead className="text-right font-semibold">
+                    Pure Wt (g)
+                  </TableHead>
+                  <TableHead className="font-semibold">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedMetalEntries.map((entry, idx) => (
+                  <TableRow
+                    key={entry.id}
+                    className={`transition-colors hover:bg-amber-50 ${
+                      idx % 2 === 0 ? "bg-amber-50/30" : ""
+                    }`}
+                    data-ocid={`customers.metalrcvd.item.${idx + 1}`}
+                  >
+                    <TableCell className="text-xs">
+                      {format(new Date(entry.date), "dd MMM yyyy")}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-amber-800">
+                      {entry.grossWeight.toFixed(3)}
+                    </TableCell>
+                    <TableCell className="text-right text-amber-700">
+                      {entry.purity.toFixed(2)}%
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-amber-900">
+                      {entry.pureWeight.toFixed(3)}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 h-7 px-2"
+                        onClick={() => handleDeleteMR(entry.id)}
+                        data-ocid={`customers.metalrcvd.delete_button.${idx + 1}`}
+                      >
+                        Remove
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+
+      {/* Cash Received Section */}
+      <div className="bg-card border border-border rounded-2xl p-5 shadow-soft section-card-green">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-5 rounded-full bg-success" />
+            <h2 className="font-display font-semibold text-sm text-foreground">
+              Cash Received
+            </h2>
+          </div>
+          <Button
+            size="sm"
+            className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+            onClick={() => setShowAddCR((v) => !v)}
+            data-ocid="customers.cashrcvd.open_modal_button"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Entry
+          </Button>
+        </div>
+
+        {/* Add form */}
+        {showAddCR && (
+          <div className="mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-emerald-800">
+                  Date
+                </Label>
+                <Input
+                  type="date"
+                  value={crDate}
+                  onChange={(e) => setCrDate(e.target.value)}
+                  className="text-sm"
+                  data-ocid="customers.cashrcvd.input"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-emerald-800">
+                  Cash Amount (₹)
+                </Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={crAmount}
+                  onChange={(e) => setCrAmount(e.target.value)}
+                  className="text-sm"
+                  data-ocid="customers.cashrcvd.input"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleAddCR}
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                data-ocid="customers.cashrcvd.submit_button"
+              >
+                <Wallet className="w-3.5 h-3.5 mr-1.5" />
+                Save Entry
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowAddCR(false)}
+                data-ocid="customers.cashrcvd.cancel_button"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {cashReceivedEntries.length === 0 ? (
+          <p className="text-center text-muted-foreground text-sm py-6">
+            No cash received entries yet
+          </p>
+        ) : (
+          <div className="rounded-xl border overflow-hidden overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="thead-green">
+                  <TableHead className="font-semibold">Date</TableHead>
+                  <TableHead className="text-right font-semibold">
+                    Amount (₹)
+                  </TableHead>
+                  <TableHead className="font-semibold">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedCashEntries.map((entry, idx) => (
+                  <TableRow
+                    key={entry.id}
+                    className={`transition-colors hover:bg-emerald-50 ${
+                      idx % 2 === 0 ? "bg-emerald-50/30" : ""
+                    }`}
+                    data-ocid={`customers.cashrcvd.item.${idx + 1}`}
+                  >
+                    <TableCell className="text-xs">
+                      {format(new Date(entry.date), "dd MMM yyyy")}
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-emerald-900">
+                      ₹{entry.amount.toFixed(0)}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 h-7 px-2"
+                        onClick={() => handleDeleteCR(entry.id)}
+                        data-ocid={`customers.cashrcvd.delete_button.${idx + 1}`}
+                      >
+                        Remove
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Customers() {
   const [selectedCustomerName, setSelectedCustomerName] = useState<
     string | null
@@ -640,10 +1279,12 @@ export default function Customers() {
   const { data: customers, isLoading } = useCustomers();
   const renameCustomer = useRenameCustomer();
 
-  // Active customer: selected or first
   const activeCustomerName =
     selectedCustomerName ?? customers?.[0]?.name ?? null;
-  const activeCustomer = customers?.find((c) => c.name === activeCustomerName);
+  const activeCustomer = useMemo(
+    () => customers?.find((c) => c.name === activeCustomerName),
+    [customers, activeCustomerName],
+  );
 
   const handleRenameOpen = (customerName: string) => {
     setRenameTarget(customerName);

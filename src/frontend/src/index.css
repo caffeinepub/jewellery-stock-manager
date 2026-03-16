@@ -238,3 +238,21 @@ html {
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
 }
+
+/* Tab active state overrides — explicit CSS to beat Radix base styles */
+.tab-active-success[data-state="active"] {
+  background-color: oklch(0.52 0.22 145) !important;
+  color: #ffffff !important;
+}
+.tab-active-warning[data-state="active"] {
+  background-color: oklch(0.68 0.22 65) !important;
+  color: #ffffff !important;
+}
+.tab-active-destructive[data-state="active"] {
+  background-color: oklch(0.57 0.24 20) !important;
+  color: #ffffff !important;
+}
+.tab-active-primary[data-state="active"] {
+  background-color: oklch(0.48 0.26 265) !important;
+  color: #ffffff !important;
+}
