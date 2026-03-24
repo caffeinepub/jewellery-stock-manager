@@ -2,65 +2,32 @@ import { Boxes, Loader2, Package, Weight } from "lucide-react";
 import { useMemo } from "react";
 import ReportDownloader from "../components/ReportDownloader";
 import StockTable from "../components/StockTable";
-import { useAnalytics, useStock } from "../hooks/useQueries";
+import { useStock } from "../hooks/useQueries";
 
 export default function StockView() {
   const { data: items, isLoading: stockLoading } = useStock();
-  const { data: analytics, isLoading: analyticsLoading } = useAnalytics();
-
-  const isLoading = stockLoading || analyticsLoading;
 
   const liveStock = useMemo(
     () => items?.filter((i) => !i.isSold) ?? [],
     [items],
   );
 
-  // Summary computed from analytics using the correct formula:
-  // Stock = Purchases - Sales - Purchase Returns + Sales Returns
+  // Items = total non-sold order rows (not deduplicated by design code)
+  const totalItems = liveStock.length;
+
+  // GW and NW summed from live records.
+  // Pieces = sum of item.pieces (each item stores the actual piece count from the scanner)
   const summaryTotals = useMemo(() => {
-    if (!analytics) {
-      return { gw: 0, nw: 0, pcs: 0 };
-    }
-
-    const totalWeightPurchased = analytics.purchases.totalWeight ?? 0;
-    const totalWeightSold = analytics.sales.totalWeight ?? 0;
-    const totalPurchaseReturnWeight =
-      analytics.purchaseReturns.totalWeight ?? 0;
-    const totalSalesReturnWeight = analytics.salesReturns.totalWeight ?? 0;
-
-    const totalPiecesPurchased = Number(analytics.purchases.totalPieces ?? 0);
-    const totalPiecesSold = Number(analytics.sales.totalPieces ?? 0);
-    const totalPurchaseReturnPieces = Number(
-      analytics.purchaseReturns.totalPieces ?? 0,
-    );
-    const totalSalesReturnPieces = Number(
-      analytics.salesReturns.totalPieces ?? 0,
-    );
-
-    // For gross weight, compute from live stock items directly
     const stockGW = liveStock.reduce((s, i) => s + i.grossWeight, 0);
-    const stockNW = Math.max(
-      0,
-      totalWeightPurchased -
-        totalWeightSold -
-        totalPurchaseReturnWeight +
-        totalSalesReturnWeight,
-    );
-    const stockPCS = Math.max(
-      0,
-      totalPiecesPurchased -
-        totalPiecesSold -
-        totalPurchaseReturnPieces +
-        totalSalesReturnPieces,
-    );
-
+    const stockNW = liveStock.reduce((s, i) => s + i.netWeight, 0);
+    const stockPCS = liveStock.reduce((s, i) => s + Number(i.pieces), 0);
     return { gw: stockGW, nw: stockNW, pcs: stockPCS };
-  }, [analytics, liveStock]);
+  }, [liveStock]);
 
   const reportData = useMemo(
     () =>
       liveStock.map((item) => ({
-        Code: item.code,
+        Code: item.code.replace(/#\d+$/, ""),
         GW: item.grossWeight.toFixed(3),
         SW: item.stoneWeight.toFixed(3),
         NW: item.netWeight.toFixed(3),
@@ -70,12 +37,12 @@ export default function StockView() {
     [liveStock],
   );
 
-  if (isLoading) {
+  if (stockLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading stock…</p>
+          <p className="text-sm text-muted-foreground">Loading stock...</p>
         </div>
       </div>
     );
@@ -95,12 +62,11 @@ export default function StockView() {
         <ReportDownloader data={reportData} filename="stock-report" />
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           {
             label: "Items",
-            value: liveStock.length.toString(),
+            value: totalItems.toString(),
             icon: Boxes,
             color: "text-primary",
             bg: "bg-primary/10",
@@ -144,7 +110,6 @@ export default function StockView() {
         ))}
       </div>
 
-      {/* Stock Table */}
       <div className="bg-card border border-border rounded-2xl p-5 shadow-soft">
         <StockTable items={liveStock} />
       </div>

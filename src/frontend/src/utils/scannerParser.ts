@@ -6,6 +6,7 @@ export interface ParsedItem {
   pieces: number | null;
   status: "VALID" | "MISTAKE" | "INVALID";
   error?: string;
+  rawString?: string;
 }
 
 /**
@@ -284,4 +285,9 @@ export function parseScannerString(scannerString: string): ParsedItem {
 
 export function parseScannerStrings(scannerStrings: string[]): ParsedItem[] {
   return scannerStrings.map(parseScannerString);
+}
+
+/** Strip the uniqueness suffix (#1, #2, etc.) added for duplicate code handling */
+export function displayCode(code: string): string {
+  return code.replace(/#\d+$/, "");
 }

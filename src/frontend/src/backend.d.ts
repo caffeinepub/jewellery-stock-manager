@@ -38,9 +38,11 @@ export interface TransactionInput {
     metalPurity?: number;
     code: string;
     netWeight: number;
+    grossWeight?: number;
     cashBalance?: number;
     timestamp: bigint;
     quantity: bigint;
+    stoneWeight?: number;
     stoneChargePerGram?: number;
     metalBalance?: number;
 }
@@ -68,7 +70,7 @@ export interface backendInterface {
     addBatchItems(itemsArray: Array<[string, number, number, number, bigint, ItemType]>): Promise<void>;
     addBatchTransactions(transactionsArray: Array<TransactionInput>): Promise<Array<string>>;
     addItem(code: string, grossWeight: number, stoneWeight: number, netWeight: number, pieces: bigint, itemType: ItemType): Promise<void>;
-    addTransaction(code: string, transactionType: ItemType, timestamp: bigint, customerName: string | null, quantity: bigint, netWeight: number, transactionCode: string, metalPurity: number | null, metalBalance: number | null, stoneChargePerGram: number | null, cashBalance: number | null): Promise<string>;
+    addTransaction(code: string, transactionType: ItemType, timestamp: bigint, customerName: string | null, quantity: bigint, netWeight: number, transactionCode: string, metalPurity: number | null, metalBalance: number | null, stoneChargePerGram: number | null, cashBalance: number | null, grossWeight: number | null, stoneWeight: number | null): Promise<string>;
     createCustomer(name: string): Promise<void>;
     deleteCustomer(name: string): Promise<void>;
     getAllCustomers(): Promise<Array<Customer>>;

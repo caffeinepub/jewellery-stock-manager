@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Search, ShoppingCart } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { JewelleryItem } from "../backend";
+import { displayCode } from "../utils/scannerParser";
 import StockTable from "./StockTable";
 
 interface StockSelectorProps {
@@ -22,7 +23,7 @@ export default function StockSelector({
   const prefixes = useMemo(() => {
     const set = new Set<string>();
     for (const item of items) {
-      set.add(item.code.slice(0, 2).toUpperCase());
+      set.add(displayCode(item.code).slice(0, 2).toUpperCase());
     }
     return Array.from(set).sort();
   }, [items]);
@@ -30,9 +31,10 @@ export default function StockSelector({
   const filteredItems = useMemo(() => {
     const q = search.toLowerCase();
     return items.filter((item) => {
-      const matchesSearch = item.code.toLowerCase().includes(q);
+      const matchesSearch = displayCode(item.code).toLowerCase().includes(q);
       const matchesTab =
-        activeTab === "all" || item.code.toUpperCase().startsWith(activeTab);
+        activeTab === "all" ||
+        displayCode(item.code).toUpperCase().startsWith(activeTab);
       return matchesSearch && matchesTab;
     });
   }, [items, search, activeTab]);

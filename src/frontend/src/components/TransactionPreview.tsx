@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ItemType, type TransactionInput } from "../backend";
-import { useAddBatchItems, useAddBatchTransactions } from "../hooks/useQueries";
+import { useAddBatchTransactions } from "../hooks/useQueries";
 import type { ParsedItem } from "../utils/scannerParser";
 
 interface TransactionPreviewProps {
@@ -92,7 +92,6 @@ export default function TransactionPreview({
   });
   const [savedCalc, setSavedCalc] = useState<SavedCalc | null>(null);
 
-  const addBatchItems = useAddBatchItems();
   const addBatchTransactions = useAddBatchTransactions();
 
   const validItems = useMemo(
@@ -195,7 +194,6 @@ export default function TransactionPreview({
 
   const openConfirm = (calc: SavedCalc | null) => {
     setSavedCalc(calc);
-    addBatchItems.reset();
     addBatchTransactions.reset();
     setShowCalcPanel(false);
     setShowConfirmDialog(true);
@@ -256,22 +254,22 @@ export default function TransactionPreview({
       const itemType = itemTypeMap[transactionType];
       const timestamp = BigInt(Date.now()) * BigInt(1_000_000);
 
-      await addBatchItems.mutateAsync(
-        validItems.map(
-          (item) =>
-            [
-              item.code,
-              item.grossWeight ?? 0,
-              item.stoneWeight ?? 0,
-              item.netWeight ?? 0,
-              BigInt(item.pieces ?? 0),
-              itemType,
-            ] as [string, number, number, number, bigint, ItemType],
-        ),
-      );
+      // Make every item code unique so duplicates do not overwrite in backend Map
+      const codeCountTotal = new Map<string, number>();
+      for (const item of validItems) {
+        codeCountTotal.set(item.code, (codeCountTotal.get(item.code) ?? 0) + 1);
+      }
+      const codeIdx = new Map<string, number>();
+      const uniqueValidItems = validItems.map((item) => {
+        const total = codeCountTotal.get(item.code) ?? 1;
+        if (total === 1) return item;
+        const idx = (codeIdx.get(item.code) ?? 0) + 1;
+        codeIdx.set(item.code, idx);
+        return { ...item, code: `${item.code}#${idx}` };
+      });
 
       await addBatchTransactions.mutateAsync(
-        validItems.map((item) => {
+        uniqueValidItems.map((item) => {
           const calc = getItemCalcValues(item);
           const trimmedCustomer = customerName?.trim();
           const txInput: TransactionInput = {
@@ -280,6 +278,8 @@ export default function TransactionPreview({
             timestamp,
             quantity: BigInt(item.pieces ?? 0),
             netWeight: item.netWeight ?? 0,
+            grossWeight: item.grossWeight ?? 0,
+            stoneWeight: item.stoneWeight ?? 0,
             transactionCode: item.code,
             ...(trimmedCustomer ? { customerName: trimmedCustomer } : {}),
             ...(calc.metalPurity != null
@@ -305,7 +305,7 @@ export default function TransactionPreview({
           const records = JSON.parse(
             localStorage.getItem("jewel_staff_records") || "{}",
           ) as Record<string, string>;
-          for (const item of validItems) {
+          for (const item of uniqueValidItems) {
             records[item.code] = staffName;
           }
           localStorage.setItem("jewel_staff_records", JSON.stringify(records));
@@ -319,9 +319,8 @@ export default function TransactionPreview({
     }
   };
 
-  const isSubmitting =
-    addBatchItems.isPending || addBatchTransactions.isPending;
-  const hasError = addBatchItems.isError || addBatchTransactions.isError;
+  const isSubmitting = addBatchTransactions.isPending;
+  const hasError = addBatchTransactions.isError;
 
   // Preview totals for confirm dialog
   const confirmTotalMetal = savedCalc
@@ -788,10 +787,22 @@ export default function TransactionPreview({
                       <>
                         <td className="px-4 py-3 font-mono text-xs font-medium text-foreground">
                           {item.code}
-                          {isIssue && item.error && (
-                            <p className="text-warning text-xs font-normal font-sans mt-0.5 leading-tight">
-                              {item.error}
-                            </p>
+                          {isIssue && (item.error || item.rawString) && (
+                            <div className="mt-0.5">
+                              {item.error && (
+                                <p className="text-warning text-xs font-normal font-sans leading-tight">
+                                  {item.error}
+                                </p>
+                              )}
+                              {item.rawString && (
+                                <p
+                                  className="text-muted-foreground text-xs font-mono leading-tight mt-0.5 truncate max-w-[200px]"
+                                  title={item.rawString}
+                                >
+                                  Raw: {item.rawString}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right text-muted-foreground">
@@ -938,7 +949,12 @@ export default function TransactionPreview({
               data-ocid="preview.error_state"
             >
               <XCircle className="w-4 h-4 shrink-0" />
-              <span>Transaction failed. Please try again.</span>
+              <span>
+                Transaction failed:{" "}
+                {addBatchTransactions.error instanceof Error
+                  ? addBatchTransactions.error.message
+                  : "Please try again."}
+              </span>
             </div>
           )}
 

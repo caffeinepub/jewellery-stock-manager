@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { JewelleryItem } from "../backend";
+import { displayCode } from "../utils/scannerParser";
 
 interface StockTableProps {
   items: JewelleryItem[];
@@ -39,7 +40,9 @@ export default function StockTable({
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return items.filter((item) => item.code.toLowerCase().includes(q));
+    return items.filter((item) =>
+      displayCode(item.code).toLowerCase().includes(q),
+    );
   }, [items, search]);
 
   const sorted = useMemo(() => {
@@ -140,7 +143,7 @@ export default function StockTable({
                   const isSelected = selectedCodes.has(item.code);
                   return (
                     <tr
-                      key={item.code}
+                      key={displayCode(item.code)}
                       onClick={() => handleRowClick(item.code)}
                       onKeyDown={(e) =>
                         e.key === "Enter" && handleRowClick(item.code)
@@ -180,7 +183,7 @@ export default function StockTable({
                         </td>
                       )}
                       <td className="px-4 py-3 font-mono text-xs font-medium text-foreground">
-                        {item.code}
+                        {displayCode(item.code)}
                       </td>
                       <td className="px-4 py-3 text-right text-muted-foreground">
                         {item.grossWeight.toFixed(3)}

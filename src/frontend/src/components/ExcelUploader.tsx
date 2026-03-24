@@ -89,9 +89,8 @@ export default function ExcelUploader({
             const cellStr = String(cell).trim();
             if (!cellStr) continue;
             const result = parseScannerString(cellStr);
-            if (result.status !== "INVALID") {
-              parsedItems.push(result);
-            }
+            result.rawString = cellStr;
+            parsedItems.push(result);
           }
         }
 

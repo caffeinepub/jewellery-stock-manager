@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar, ChevronDown, ChevronRight, Filter } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ItemType, type TransactionRecord } from "../backend";
+import { displayCode } from "../utils/scannerParser";
 import ReportDownloader from "./ReportDownloader";
 
 type ColorTheme = "green" | "amber" | "rose" | "blue" | "violet";
@@ -141,7 +142,7 @@ export default function TransactionTotalsView({
   const totals = useMemo(() => {
     const gw = filtered.reduce((s, t) => s + t.item.grossWeight, 0);
     const nw = filtered.reduce((s, t) => s + t.item.netWeight, 0);
-    const pcs = filtered.reduce((s, t) => s + Number(t.item.pieces), 0);
+    const pcs = filtered.reduce((s, t) => s + Number(t.quantity), 0);
     return { gw, nw, pcs, count: filtered.length };
   }, [filtered]);
 
@@ -163,7 +164,7 @@ export default function TransactionTotalsView({
       gw: group.reduce((s, t) => s + t.item.grossWeight, 0),
       nw: group.reduce((s, t) => s + t.item.netWeight, 0),
       sw: group.reduce((s, t) => s + t.item.stoneWeight, 0),
-      pcs: group.reduce((s, t) => s + Number(t.item.pieces), 0),
+      pcs: group.reduce((s, t) => s + Number(t.quantity), 0),
       pureWt: group.reduce((s, t) => s + (t.metalBalance ?? 0), 0),
       cashBal: group.reduce((s, t) => s + (t.cashBalance ?? 0), 0),
       avgPurity:
@@ -213,12 +214,12 @@ export default function TransactionTotalsView({
 
     const detailData = filtered.map((t) => ({
       Date: formatDate(t.timestamp),
-      Code: t.item.code,
+      Code: displayCode(t.item.code),
       Type: String(t.transactionType),
       "GW (g)": t.item.grossWeight.toFixed(3),
       "SW (g)": t.item.stoneWeight.toFixed(3),
       "NW (g)": t.item.netWeight.toFixed(3),
-      PCS: Number(t.item.pieces),
+      PCS: Number(t.quantity),
       Customer: t.customerName ?? "",
       "Calc %": t.metalPurity ? t.metalPurity.toFixed(2) : "",
       "Pure Wt (g)": t.metalBalance ? t.metalBalance.toFixed(3) : "",
@@ -234,12 +235,12 @@ export default function TransactionTotalsView({
   // Flat export data (used when twoSectionExport is false)
   const flatReportData = filtered.map((t) => ({
     Date: formatDate(t.timestamp),
-    Code: t.item.code,
+    Code: displayCode(t.item.code),
     Type: String(t.transactionType),
     GW: t.item.grossWeight.toFixed(3),
     SW: t.item.stoneWeight.toFixed(3),
     NW: t.item.netWeight.toFixed(3),
-    PCS: Number(t.item.pieces),
+    PCS: Number(t.quantity),
     Customer: t.customerName || "",
   }));
 
@@ -314,7 +315,7 @@ export default function TransactionTotalsView({
           {grouped.map(([dateKey, txns]) => {
             const isCollapsed = collapsedDates.has(dateKey);
             const dayGW = txns.reduce((s, t) => s + t.item.grossWeight, 0);
-            const dayPCS = txns.reduce((s, t) => s + Number(t.item.pieces), 0);
+            const dayPCS = txns.reduce((s, t) => s + Number(t.quantity), 0);
 
             return (
               <div
@@ -414,7 +415,7 @@ export default function TransactionTotalsView({
                             }`}
                           >
                             <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">
-                              {t.item.code}
+                              {displayCode(t.item.code)}
                             </td>
                             <td className="px-4 py-2.5">
                               <span
@@ -447,7 +448,7 @@ export default function TransactionTotalsView({
                             <td
                               className={`px-4 py-2.5 text-right ${theme.labelColor}`}
                             >
-                              {Number(t.item.pieces)}
+                              {Number(t.quantity)}
                             </td>
                             {showStaffName && (
                               <td className="px-4 py-2.5 text-muted-foreground text-xs">

@@ -5,8 +5,9 @@ import Map "mo:core/Map";
 import Iter "mo:core/Iter";
 import Array "mo:core/Array";
 import Order "mo:core/Order";
-
 import MixinStorage "blob-storage/Mixin";
+
+
 
 actor {
   include MixinStorage();
@@ -61,6 +62,8 @@ actor {
     metalBalance : ?Float;
     stoneChargePerGram : ?Float;
     cashBalance : ?Float;
+    grossWeight : ?Float;
+    stoneWeight : ?Float;
   };
 
   public type TransactionAggregate = {
@@ -141,9 +144,10 @@ actor {
     metalBalance : ?Float,
     stoneChargePerGram : ?Float,
     cashBalance : ?Float,
+    grossWeight : ?Float,
+    stoneWeight : ?Float,
   ) : Text {
     switch (items.get(code)) {
-      case (null) { "Item not found" };
       case (?item) {
         if (transactionType == #sale and item.isSold) {
           return "Item already sold";
@@ -178,6 +182,56 @@ actor {
         switch (customerName, transactionType) {
           case (?name, #sale) {
             upsertCustomerTransaction(name, record, ?updatedItem);
+          };
+          case (?name, #salesReturn) {
+            upsertCustomerTransaction(name, record, null);
+          };
+          case (_, _) {};
+        };
+
+        "Transaction successful";
+      };
+      case (null) {
+        // Create new item on-the-fly — use quantity for pieces so stock counts match
+        let newItem : JewelleryItem = {
+          code;
+          grossWeight = switch (grossWeight) {
+            case (null) { netWeight };
+            case (?weight) { weight };
+          };
+          stoneWeight = switch (stoneWeight) {
+            case (null) { 0.0 };
+            case (?weight) { weight };
+          };
+          netWeight;
+          pieces = quantity;
+          itemType = transactionType;
+          isSold = (transactionType == #sale);
+        };
+
+        let record : TransactionRecord = {
+          id = nextTransactionId;
+          item = newItem;
+          transactionType;
+          timestamp;
+          customerName;
+          quantity;
+          netWeight;
+          transactionCode;
+          metalPurity;
+          metalBalance;
+          stoneChargePerGram;
+          cashBalance;
+        };
+
+        items.add(code, newItem);
+        transactions.add(nextTransactionId, record);
+        nextTransactionId += 1;
+
+        // Update customer history for sales AND sales returns
+        switch (customerName, transactionType) {
+          case (?name, #sale) {
+            upsertCustomerTransaction(name, record, ?newItem);
           };
           case (?name, #salesReturn) {
             upsertCustomerTransaction(name, record, null);
@@ -237,6 +291,8 @@ actor {
     metalBalance : ?Float,
     stoneChargePerGram : ?Float,
     cashBalance : ?Float,
+    grossWeight : ?Float,
+    stoneWeight : ?Float,
   ) : async Text {
     addTransactionInternal(
       code,
@@ -250,6 +306,8 @@ actor {
       metalBalance,
       stoneChargePerGram,
       cashBalance,
+      grossWeight,
+      stoneWeight,
     );
   };
 
@@ -269,6 +327,8 @@ actor {
         transaction.metalBalance,
         transaction.stoneChargePerGram,
         transaction.cashBalance,
+        transaction.grossWeight,
+        transaction.stoneWeight,
       );
       results := results.concat([result]);
     };
@@ -347,7 +407,8 @@ actor {
       func(acc, (_, record)) {
         {
           totalWeight = acc.totalWeight + record.item.grossWeight;
-          totalPieces = acc.totalPieces + record.item.pieces;
+          // Use record.quantity (actual piece count from input) not item.pieces
+          totalPieces = acc.totalPieces + record.quantity;
         };
       },
     );

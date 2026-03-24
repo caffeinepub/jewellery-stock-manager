@@ -131,9 +131,11 @@ export interface TransactionInput {
     metalPurity?: number;
     code: string;
     netWeight: number;
+    grossWeight?: number;
     cashBalance?: number;
     timestamp: bigint;
     quantity: bigint;
+    stoneWeight?: number;
     stoneChargePerGram?: number;
     metalBalance?: number;
 }
@@ -167,7 +169,7 @@ export interface backendInterface {
     addBatchItems(itemsArray: Array<[string, number, number, number, bigint, ItemType]>): Promise<void>;
     addBatchTransactions(transactionsArray: Array<TransactionInput>): Promise<Array<string>>;
     addItem(code: string, grossWeight: number, stoneWeight: number, netWeight: number, pieces: bigint, itemType: ItemType): Promise<void>;
-    addTransaction(code: string, transactionType: ItemType, timestamp: bigint, customerName: string | null, quantity: bigint, netWeight: number, transactionCode: string, metalPurity: number | null, metalBalance: number | null, stoneChargePerGram: number | null, cashBalance: number | null): Promise<string>;
+    addTransaction(code: string, transactionType: ItemType, timestamp: bigint, customerName: string | null, quantity: bigint, netWeight: number, transactionCode: string, metalPurity: number | null, metalBalance: number | null, stoneChargePerGram: number | null, cashBalance: number | null, grossWeight: number | null, stoneWeight: number | null): Promise<string>;
     createCustomer(name: string): Promise<void>;
     deleteCustomer(name: string): Promise<void>;
     getAllCustomers(): Promise<Array<Customer>>;
@@ -310,17 +312,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addTransaction(arg0: string, arg1: ItemType, arg2: bigint, arg3: string | null, arg4: bigint, arg5: number, arg6: string, arg7: number | null, arg8: number | null, arg9: number | null, arg10: number | null): Promise<string> {
+    async addTransaction(arg0: string, arg1: ItemType, arg2: bigint, arg3: string | null, arg4: bigint, arg5: number, arg6: string, arg7: number | null, arg8: number | null, arg9: number | null, arg10: number | null, arg11: number | null, arg12: number | null): Promise<string> {
         if (this.processError) {
             try {
-                const result = await this.actor.addTransaction(arg0, to_candid_ItemType_n10(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_opt_n15(this._uploadFile, this._downloadFile, arg3), arg4, arg5, arg6, to_candid_opt_n16(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg8), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg9), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg10));
+                const result = await this.actor.addTransaction(arg0, to_candid_ItemType_n10(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_opt_n15(this._uploadFile, this._downloadFile, arg3), arg4, arg5, arg6, to_candid_opt_n16(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg8), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg9), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg10), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg11), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg12));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addTransaction(arg0, to_candid_ItemType_n10(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_opt_n15(this._uploadFile, this._downloadFile, arg3), arg4, arg5, arg6, to_candid_opt_n16(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg8), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg9), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg10));
+            const result = await this.actor.addTransaction(arg0, to_candid_ItemType_n10(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_opt_n15(this._uploadFile, this._downloadFile, arg3), arg4, arg5, arg6, to_candid_opt_n16(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg8), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg9), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg10), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg11), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg12));
             return result;
         }
     }
@@ -673,9 +675,11 @@ function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     metalPurity?: number;
     code: string;
     netWeight: number;
+    grossWeight?: number;
     cashBalance?: number;
     timestamp: bigint;
     quantity: bigint;
+    stoneWeight?: number;
     stoneChargePerGram?: number;
     metalBalance?: number;
 }): {
@@ -685,9 +689,11 @@ function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     metalPurity: [] | [number];
     code: string;
     netWeight: number;
+    grossWeight: [] | [number];
     cashBalance: [] | [number];
     timestamp: bigint;
     quantity: bigint;
+    stoneWeight: [] | [number];
     stoneChargePerGram: [] | [number];
     metalBalance: [] | [number];
 } {
@@ -698,9 +704,11 @@ function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         metalPurity: value.metalPurity ? candid_some(value.metalPurity) : candid_none(),
         code: value.code,
         netWeight: value.netWeight,
+        grossWeight: value.grossWeight ? candid_some(value.grossWeight) : candid_none(),
         cashBalance: value.cashBalance ? candid_some(value.cashBalance) : candid_none(),
         timestamp: value.timestamp,
         quantity: value.quantity,
+        stoneWeight: value.stoneWeight ? candid_some(value.stoneWeight) : candid_none(),
         stoneChargePerGram: value.stoneChargePerGram ? candid_some(value.stoneChargePerGram) : candid_none(),
         metalBalance: value.metalBalance ? candid_some(value.metalBalance) : candid_none()
     };
