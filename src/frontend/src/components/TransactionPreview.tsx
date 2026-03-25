@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  AlertCircle,
   AlertTriangle,
   Calculator,
   Check,
@@ -91,6 +92,9 @@ export default function TransactionPreview({
     nonStonePurity: 99,
   });
   const [savedCalc, setSavedCalc] = useState<SavedCalc | null>(null);
+  const [duplicateItems, setDuplicateItems] = useState<IndexedItem[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [atLeastOneSucceeded, setAtLeastOneSucceeded] = useState(false);
 
   const addBatchTransactions = useAddBatchTransactions();
 
@@ -243,24 +247,65 @@ export default function TransactionPreview({
     };
   }
 
-  const handleConfirm = async () => {
-    try {
-      const itemTypeMap: Record<string, ItemType> = {
-        sale: ItemType.sale,
-        purchase: ItemType.purchase,
-        purchaseReturn: ItemType.purchaseReturn,
-        salesReturn: ItemType.salesReturn,
-      };
-      const itemType = itemTypeMap[transactionType];
-      const timestamp = BigInt(Date.now()) * BigInt(1_000_000);
+  const buildTxInputs = (items: IndexedItem[], forceSale = false) => {
+    const itemTypeMap: Record<string, ItemType> = {
+      sale: ItemType.sale,
+      purchase: ItemType.purchase,
+      purchaseReturn: ItemType.purchaseReturn,
+      salesReturn: ItemType.salesReturn,
+    };
+    const itemType = itemTypeMap[transactionType];
+    const timestamp = BigInt(Date.now()) * BigInt(1_000_000);
+    const trimmedCustomer = customerName?.trim();
+    return items.map((item) => {
+      const calc = getItemCalcValues(item);
+      const txInput = {
+        code: item.code,
+        transactionType: itemType,
+        timestamp,
+        quantity: BigInt(item.pieces ?? 0),
+        netWeight: item.netWeight ?? 0,
+        grossWeight: item.grossWeight ?? 0,
+        stoneWeight: item.stoneWeight ?? 0,
+        transactionCode: item.code,
+        forceSale: forceSale ? [true] : [],
+        ...(trimmedCustomer ? { customerName: trimmedCustomer } : {}),
+        ...(calc.metalPurity != null ? { metalPurity: calc.metalPurity } : {}),
+        ...(calc.metalBalance != null
+          ? { metalBalance: calc.metalBalance }
+          : {}),
+        ...(calc.stoneChargePerGram != null
+          ? { stoneChargePerGram: calc.stoneChargePerGram }
+          : {}),
+        ...(calc.cashBalance != null ? { cashBalance: calc.cashBalance } : {}),
+      } as unknown as TransactionInput;
+      return txInput;
+    });
+  };
 
+  const saveStaffRecords = (items: IndexedItem[]) => {
+    if (!staffName) return;
+    try {
+      const records = JSON.parse(
+        localStorage.getItem("jewel_staff_records") || "{}",
+      ) as Record<string, string>;
+      for (const item of items) {
+        records[item.code] = staffName;
+      }
+      localStorage.setItem("jewel_staff_records", JSON.stringify(records));
+    } catch {}
+  };
+
+  const handleConfirm = async (forceSaleOverride = false) => {
+    try {
       // Make every item code unique so duplicates do not overwrite in backend Map
+      const sourceItems = forceSaleOverride ? duplicateItems : validItems;
       const codeCountTotal = new Map<string, number>();
-      for (const item of validItems) {
+      for (const item of sourceItems) {
         codeCountTotal.set(item.code, (codeCountTotal.get(item.code) ?? 0) + 1);
       }
       const codeIdx = new Map<string, number>();
-      const uniqueValidItems = validItems.map((item) => {
+      const uniqueValidItems = sourceItems.map((item) => {
         const total = codeCountTotal.get(item.code) ?? 1;
         if (total === 1) return item;
         const idx = (codeIdx.get(item.code) ?? 0) + 1;
@@ -268,55 +313,58 @@ export default function TransactionPreview({
         return { ...item, code: `${item.code}#${idx}` };
       });
 
-      await addBatchTransactions.mutateAsync(
-        uniqueValidItems.map((item) => {
-          const calc = getItemCalcValues(item);
-          const trimmedCustomer = customerName?.trim();
-          const txInput: TransactionInput = {
-            code: item.code,
-            transactionType: itemType,
-            timestamp,
-            quantity: BigInt(item.pieces ?? 0),
-            netWeight: item.netWeight ?? 0,
-            grossWeight: item.grossWeight ?? 0,
-            stoneWeight: item.stoneWeight ?? 0,
-            transactionCode: item.code,
-            ...(trimmedCustomer ? { customerName: trimmedCustomer } : {}),
-            ...(calc.metalPurity != null
-              ? { metalPurity: calc.metalPurity }
-              : {}),
-            ...(calc.metalBalance != null
-              ? { metalBalance: calc.metalBalance }
-              : {}),
-            ...(calc.stoneChargePerGram != null
-              ? { stoneChargePerGram: calc.stoneChargePerGram }
-              : {}),
-            ...(calc.cashBalance != null
-              ? { cashBalance: calc.cashBalance }
-              : {}),
-          };
-          return txInput;
-        }),
+      const results = await addBatchTransactions.mutateAsync(
+        buildTxInputs(uniqueValidItems, forceSaleOverride),
       );
 
-      // Save staff name for each transaction code
-      if (staffName) {
-        try {
-          const records = JSON.parse(
-            localStorage.getItem("jewel_staff_records") || "{}",
-          ) as Record<string, string>;
-          for (const item of uniqueValidItems) {
-            records[item.code] = staffName;
-          }
-          localStorage.setItem("jewel_staff_records", JSON.stringify(records));
-        } catch {}
+      const succeeded: IndexedItem[] = [];
+      const duplicates: IndexedItem[] = [];
+      results.forEach((result, idx) => {
+        if (result === "Transaction successful") {
+          succeeded.push(uniqueValidItems[idx]);
+        } else if (result === "Item already sold") {
+          duplicates.push(uniqueValidItems[idx]);
+        } else {
+          // treat other results as succeeded for staff records
+          succeeded.push(uniqueValidItems[idx]);
+        }
+      });
+
+      saveStaffRecords(succeeded);
+
+      if (duplicates.length > 0 && !forceSaleOverride) {
+        setDuplicateItems(duplicates);
+        setAtLeastOneSucceeded(succeeded.length > 0);
+        setShowDuplicateWarning(true);
+        if (succeeded.length > 0) {
+          // some succeeded — invalidate queries so records appear
+          addBatchTransactions.reset();
+        }
+        return;
       }
 
+      // All good — close and notify parent
+      setDuplicateItems([]);
+      setShowDuplicateWarning(false);
+      setAtLeastOneSucceeded(false);
       setShowConfirmDialog(false);
       onConfirm?.();
     } catch (err) {
       console.error("Transaction failed:", err);
     }
+  };
+
+  const handleAcceptAndClose = () => {
+    setDuplicateItems([]);
+    setShowDuplicateWarning(false);
+    setAtLeastOneSucceeded(false);
+    setShowConfirmDialog(false);
+    onConfirm?.();
+  };
+
+  const handleForceRecord = async () => {
+    setShowDuplicateWarning(false);
+    await handleConfirm(true);
   };
 
   const isSubmitting = addBatchTransactions.isPending;
@@ -958,34 +1006,83 @@ export default function TransactionPreview({
             </div>
           )}
 
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmDialog(false)}
-              disabled={isSubmitting}
-              data-ocid="preview.cancel_button"
+          {showDuplicateWarning && duplicateItems.length > 0 && (
+            <div
+              className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-2"
+              data-ocid="preview.error_state"
             >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={isSubmitting}
-              className="gap-2"
-              data-ocid="preview.confirm_button"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Submitting…
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  Confirm {typeLabel}
-                </>
+              <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {duplicateItems.length} item(s) already sold
+              </div>
+              <p className="text-xs text-amber-600">
+                The following items were skipped because they are already marked
+                as sold:{" "}
+                <span className="font-mono font-bold">
+                  {duplicateItems.map((i) => i.code).join(", ")}
+                </span>
+              </p>
+              {atLeastOneSucceeded && (
+                <p className="text-xs text-green-700">
+                  ✓ Other items in this batch were recorded successfully.
+                </p>
               )}
-            </Button>
-          </DialogFooter>
+              <div className="flex gap-2 pt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAcceptAndClose}
+                  className="flex-1 border-amber-300 text-amber-700"
+                  data-ocid="preview.cancel_button"
+                >
+                  Accept &amp; Close
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleForceRecord}
+                  disabled={isSubmitting}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-white gap-1"
+                  data-ocid="preview.confirm_button"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : null}
+                  Override &amp; Force Record
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!showDuplicateWarning && (
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowConfirmDialog(false)}
+                disabled={isSubmitting}
+                data-ocid="preview.cancel_button"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleConfirm()}
+                disabled={isSubmitting}
+                className="gap-2"
+                data-ocid="preview.confirm_button"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Submitting…
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Confirm {typeLabel}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

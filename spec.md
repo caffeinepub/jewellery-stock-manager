@@ -1,32 +1,35 @@
 # Jewellery Stock Manager
 
 ## Current State
-Fully functional jewellery stock management app with Sales, Purchases, Returns, Stock, and Customers tabs. Dashboard shows 5 stat cards. Party Ledger in Customers tab shows Date/Type/Code/GW/Dr/Cr/Balance columns. Sales page has a plain text input for customer name. TransactionTotalsView always shows Customer column. Summary cards and table rows in non-dashboard tabs use neutral styling.
+- `addBatchTransactions` in the backend returns `[Text]` — either "Transaction successful" or "Item already sold" per item
+- `TransactionPreview.handleConfirm` calls `addBatchTransactions.mutateAsync()` but NEVER checks the returned results array
+- If ALL items return "Item already sold", the form resets (onConfirm called) and queries are invalidated, but NO transactions are stored and the sales record stays empty
+- No warning is shown to the user when items are already sold
+- Customer tab doesn't update because no transaction was actually saved
 
 ## Requested Changes (Diff)
 
 ### Add
-- Reset Data button at the bottom of Dashboard — shows a confirmation dialog, then calls a new `resetAllData` backend function that wipes all items, transactions, and customers
-- `resetAllData` Motoko backend function
+- Backend: `forceSale: ?Bool` field to `TransactionInput` type — when true, bypass the `isSold` check so the sale is recorded regardless
+- Frontend: After `addBatchTransactions.mutateAsync` returns, inspect the results array
+- Frontend: If any items returned "Item already sold", show a warning dialog listing the duplicate item codes
+- Frontend: Warning dialog has two options: "Cancel" (abort entirely) and "Override & Record" (resubmit only the failed items with forceSale=true)
+- Frontend: Only call `onConfirm()` when at least one transaction was actually recorded (results contain at least one "Transaction successful")
 
 ### Modify
-- Party Ledger table columns: replace current columns with GW, NW, CALCULATION (metalPurity %), PURE WT (metalBalance g), AMOUNT (cashBalance ₹)
-- Customer name field in Sales page: change plain text Input to a searchable dropdown/combobox that lists existing customer names but also allows typing a new name
-- TransactionTotalsView: add `hideCustomer` boolean prop; when true, hide the Customer column from table header and rows (used in Purchases)
-- Summary cards in TransactionTotalsView: apply colorful gradient backgrounds matching the section color theme (green for sales, amber for purchases, rose for returns)
-- Table rows in TransactionTotalsView: add alternating row colors and left border accent for visual vibrancy
-- App layout: ensure 100% zoom works on both mobile and desktop — fix any overflow/scrolling issues, use fluid widths
+- Backend `addTransactionInternal`: accept `forceSale` param; when true, skip the `item.isSold` check for sales
+- Backend `addBatchTransactions`: pass `transaction.forceSale` down to `addTransactionInternal`
+- Frontend `TransactionPreview.handleConfirm`: check results, split into succeeded/failed, show override dialog if any failed with "Item already sold"
 
 ### Remove
-- Customer column from Purchase History table (via hideCustomer prop in Purchases.tsx)
+- Silent swallowing of "Item already sold" backend results
 
 ## Implementation Plan
-1. Regenerate Motoko backend with resetAllData function
-2. Update backend.d.ts to include resetAllData
-3. Add useResetAllData mutation hook in useQueries.ts
-4. Add Reset Data button + confirmation dialog at bottom of Dashboard.tsx
-5. In Customers.tsx Party Ledger: replace columns with GW, NW, CALCULATION, PURE WT, AMOUNT using metalPurity/metalBalance/cashBalance fields
-6. In Sales.tsx: replace plain Input with a Select/combobox showing existing customers (from useCustomers), with option to type new name
-7. In TransactionTotalsView.tsx: add hideCustomer prop, apply colorful summary cards and alternating row styles
-8. In Purchases.tsx: pass hideCustomer={true} to TransactionTotalsView
-9. Fix responsive layout for 100% zoom on mobile and desktop
+1. Update backend `TransactionInput` to include `forceSale: ?Bool`
+2. Update `addTransactionInternal` to accept forceSale param and skip isSold check when true
+3. Update `addBatchTransactions` to pass forceSale through
+4. In `TransactionPreview.tsx`, after mutateAsync returns, zip results with items
+5. Split items into succeeded / alreadySold
+6. If alreadySold is non-empty, show a warning dialog with the list of duplicate codes
+7. "Override & Record": resubmit only the alreadySold items with forceSale=true
+8. Only call onConfirm() after at least one item succeeded (or override succeeded)

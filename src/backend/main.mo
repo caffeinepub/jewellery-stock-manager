@@ -64,6 +64,7 @@ actor {
     cashBalance : ?Float;
     grossWeight : ?Float;
     stoneWeight : ?Float;
+    forceSale : ?Bool;
   };
 
   public type TransactionAggregate = {
@@ -132,6 +133,7 @@ actor {
   };
 
   // Private synchronous helper — no await, safe to call in loops
+  // forceSale: when true, bypasses the isSold check so the sale is recorded regardless
   func addTransactionInternal(
     code : Text,
     transactionType : ItemType,
@@ -146,10 +148,11 @@ actor {
     cashBalance : ?Float,
     grossWeight : ?Float,
     stoneWeight : ?Float,
+    forceSale : Bool,
   ) : Text {
     switch (items.get(code)) {
       case (?item) {
-        if (transactionType == #sale and item.isSold) {
+        if (transactionType == #sale and item.isSold and not forceSale) {
           return "Item already sold";
         };
 
@@ -308,6 +311,7 @@ actor {
       cashBalance,
       grossWeight,
       stoneWeight,
+      false,
     );
   };
 
@@ -315,6 +319,10 @@ actor {
   public shared ({ caller }) func addBatchTransactions(transactionsArray : [TransactionInput]) : async [Text] {
     var results : [Text] = [];
     for (transaction in transactionsArray.values()) {
+      let force = switch (transaction.forceSale) {
+        case (?b) { b };
+        case (null) { false };
+      };
       let result = addTransactionInternal(
         transaction.code,
         transaction.transactionType,
@@ -329,6 +337,7 @@ actor {
         transaction.cashBalance,
         transaction.grossWeight,
         transaction.stoneWeight,
+        force,
       );
       results := results.concat([result]);
     };
@@ -469,4 +478,59 @@ actor {
     customers.clear();
     nextTransactionId := 1;
   };
+
+  // Delete a sale transaction and return the item to stock
+  public shared ({ caller }) func deleteSaleTransaction(transactionId : Nat) : async Text {
+    switch (transactions.get(transactionId)) {
+      case (null) { "Transaction not found" };
+      case (?tx) {
+        if (tx.transactionType != #sale) {
+          return "Can only delete sale transactions";
+        };
+
+        // Mark item as not sold (return to stock)
+        switch (items.get(tx.item.code)) {
+          case (?item) {
+            let updatedItem = {
+              item with
+              isSold = false;
+              itemType = #purchase;
+            };
+            items.add(tx.item.code, updatedItem);
+          };
+          case (null) {};
+        };
+
+        // Remove transaction record
+        transactions.remove(transactionId);
+
+        // Remove transaction from customer history
+        switch (tx.customerName) {
+          case (?name) {
+            switch (customers.get(name)) {
+              case (?customer) {
+                let updatedHistory = customer.transactionHistory.filter(
+                  func(t : TransactionRecord) : Bool { t.id != transactionId }
+                );
+                let updatedHoldings = customer.currentHoldings.filter(
+                  func(i : JewelleryItem) : Bool { i.code != tx.item.code }
+                );
+                let updatedCustomer : Customer = {
+                  name;
+                  transactionHistory = updatedHistory;
+                  currentHoldings = updatedHoldings;
+                };
+                customers.add(name, updatedCustomer);
+              };
+              case (null) {};
+            };
+          };
+          case (null) {};
+        };
+
+        "Transaction deleted successfully"
+      };
+    };
+  };
+
 };
