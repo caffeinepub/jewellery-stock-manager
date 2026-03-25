@@ -248,7 +248,7 @@ export default function TransactionPreview({
     };
   }
 
-  const buildTxInputs = (items: IndexedItem[], forceSale = false) => {
+  const buildTxInputs = (items: IndexedItem[], _forceSale = false) => {
     const itemTypeMap: Record<string, ItemType> = {
       sale: ItemType.sale,
       purchase: ItemType.purchase,
@@ -264,12 +264,11 @@ export default function TransactionPreview({
         code: item.code,
         transactionType: itemType,
         timestamp,
-        quantity: BigInt(item.pieces ?? 0),
+        quantity: BigInt(item.pieces && item.pieces > 0 ? item.pieces : 1),
         netWeight: item.netWeight ?? 0,
         grossWeight: item.grossWeight ?? 0,
         stoneWeight: item.stoneWeight ?? 0,
         transactionCode: item.code,
-        forceSale: forceSale ? [true] : [],
         ...(trimmedCustomer ? { customerName: trimmedCustomer } : {}),
         ...(calc.metalPurity != null ? { metalPurity: calc.metalPurity } : {}),
         ...(calc.metalBalance != null
@@ -352,7 +351,9 @@ export default function TransactionPreview({
       onConfirm?.();
     } catch (err) {
       console.error("Transaction failed:", err);
-      toast.error("Transaction failed. Please try again.");
+      const errMsg = err instanceof Error ? err.message : String(err);
+      // Surface the actual error so it's diagnosable
+      toast.error(`Transaction failed: ${errMsg.slice(0, 200)}`);
     }
   };
 
