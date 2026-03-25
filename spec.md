@@ -1,35 +1,24 @@
 # Jewellery Stock Manager
 
 ## Current State
-- `addBatchTransactions` in the backend returns `[Text]` — either "Transaction successful" or "Item already sold" per item
-- `TransactionPreview.handleConfirm` calls `addBatchTransactions.mutateAsync()` but NEVER checks the returned results array
-- If ALL items return "Item already sold", the form resets (onConfirm called) and queries are invalidated, but NO transactions are stored and the sales record stays empty
-- No warning is shown to the user when items are already sold
-- Customer tab doesn't update because no transaction was actually saved
+Sale submission errors are silently caught with `console.error` only — the user sees no feedback when the canister is stopped or the call fails. Return values from `addBatchTransactions` (e.g. "Item already sold") are ignored, so if all items fail, the form resets but nothing is recorded. Customers page doesn't reflect new sales.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `forceSale: ?Bool` field to `TransactionInput` type — when true, bypass the `isSold` check so the sale is recorded regardless
-- Frontend: After `addBatchTransactions.mutateAsync` returns, inspect the results array
-- Frontend: If any items returned "Item already sold", show a warning dialog listing the duplicate item codes
-- Frontend: Warning dialog has two options: "Cancel" (abort entirely) and "Override & Record" (resubmit only the failed items with forceSale=true)
-- Frontend: Only call `onConfirm()` when at least one transaction was actually recorded (results contain at least one "Transaction successful")
+- Visible error toast/alert when `addBatchTransactions` throws (currently only `console.error`)
+- Warning shown to user when backend returns "Item already sold" for any items
+- Force query refetch (not just invalidate) after successful sale so data shows immediately
 
 ### Modify
-- Backend `addTransactionInternal`: accept `forceSale` param; when true, skip the `item.isSold` check for sales
-- Backend `addBatchTransactions`: pass `transaction.forceSale` down to `addTransactionInternal`
-- Frontend `TransactionPreview.handleConfirm`: check results, split into succeeded/failed, show override dialog if any failed with "Item already sold"
+- `TransactionPreview.tsx` `handleConfirm`: replace silent `catch` with visible error display using toast or inline error message
+- Check the string array returned by `addBatchTransactions` — if any items returned "Item already sold", show a warning listing those codes
+- `useAddBatchTransactions` in `useQueries.ts`: after invalidateQueries, also call `refetchQueries` for transactions and customers to force immediate refresh
 
 ### Remove
-- Silent swallowing of "Item already sold" backend results
+- Nothing removed
 
 ## Implementation Plan
-1. Update backend `TransactionInput` to include `forceSale: ?Bool`
-2. Update `addTransactionInternal` to accept forceSale param and skip isSold check when true
-3. Update `addBatchTransactions` to pass forceSale through
-4. In `TransactionPreview.tsx`, after mutateAsync returns, zip results with items
-5. Split items into succeeded / alreadySold
-6. If alreadySold is non-empty, show a warning dialog with the list of duplicate codes
-7. "Override & Record": resubmit only the alreadySold items with forceSale=true
-8. Only call onConfirm() after at least one item succeeded (or override succeeded)
+1. In `TransactionPreview.tsx`, in the `catch` block of `handleConfirm`, show a visible error (use `toast.error` or set an error state that renders in the UI)
+2. After `addBatchTransactions.mutateAsync` resolves, check the returned string array — if any result includes "already sold", display a warning to the user with which codes were affected
+3. In `useQueries.ts` `useAddBatchTransactions` `onSuccess`, after invalidateQueries calls, also call `queryClient.refetchQueries` for `["transactions"]` and `["customers"]` to ensure immediate data refresh

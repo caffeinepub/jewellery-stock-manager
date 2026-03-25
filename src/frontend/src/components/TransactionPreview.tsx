@@ -24,6 +24,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { ItemType, type TransactionInput } from "../backend";
 import { useAddBatchTransactions } from "../hooks/useQueries";
 import type { ParsedItem } from "../utils/scannerParser";
@@ -351,6 +352,7 @@ export default function TransactionPreview({
       onConfirm?.();
     } catch (err) {
       console.error("Transaction failed:", err);
+      toast.error("Transaction failed. Please try again.");
     }
   };
 

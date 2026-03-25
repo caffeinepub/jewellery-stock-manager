@@ -187,6 +187,8 @@ export function useBatchTransactionMutation() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["factory"] });
+      queryClient.refetchQueries({ queryKey: ["transactions"] });
+      queryClient.refetchQueries({ queryKey: ["customers"] });
     },
   });
 }
