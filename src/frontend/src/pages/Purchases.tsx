@@ -1,9 +1,16 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Package, PenLine, ScanLine } from "lucide-react";
+import {
+  FileSpreadsheet,
+  ImageIcon,
+  Package,
+  PenLine,
+  ScanLine,
+} from "lucide-react";
 import { useState } from "react";
 import { ItemType } from "../backend";
 import BarcodeScanner from "../components/BarcodeScanner";
 import ExcelUploader from "../components/ExcelUploader";
+import ImageOCRUploader from "../components/ImageOCRUploader";
 import ManualEntryForm from "../components/ManualEntryForm";
 import TransactionPreview from "../components/TransactionPreview";
 import TransactionTotalsView from "../components/TransactionTotalsView";
@@ -87,6 +94,13 @@ export default function Purchases() {
                   <ScanLine className="w-3.5 h-3.5" />
                   Scan
                 </TabsTrigger>
+                <TabsTrigger
+                  value="image"
+                  className="tab-active-warning gap-2 text-xs text-foreground"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  Image
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="excel">
                 <ExcelUploader
@@ -102,6 +116,12 @@ export default function Purchases() {
               <TabsContent value="scan">
                 <BarcodeScanner
                   onBatchReady={(items) => setParsedItems(items)}
+                />
+              </TabsContent>
+              <TabsContent value="image">
+                <ImageOCRUploader
+                  onItemsParsed={setParsedItems}
+                  label="Upload or Capture Image"
                 />
               </TabsContent>
             </Tabs>
