@@ -260,7 +260,7 @@ export default function TransactionPreview({
     const trimmedCustomer = customerName?.trim();
     return items.map((item) => {
       const calc = getItemCalcValues(item);
-      const txInput = {
+      const txInput: TransactionInput = {
         code: item.code,
         transactionType: itemType,
         timestamp,
@@ -269,16 +269,12 @@ export default function TransactionPreview({
         grossWeight: item.grossWeight ?? 0,
         stoneWeight: item.stoneWeight ?? 0,
         transactionCode: item.code,
-        ...(trimmedCustomer ? { customerName: trimmedCustomer } : {}),
-        ...(calc.metalPurity != null ? { metalPurity: calc.metalPurity } : {}),
-        ...(calc.metalBalance != null
-          ? { metalBalance: calc.metalBalance }
-          : {}),
-        ...(calc.stoneChargePerGram != null
-          ? { stoneChargePerGram: calc.stoneChargePerGram }
-          : {}),
-        ...(calc.cashBalance != null ? { cashBalance: calc.cashBalance } : {}),
-      } as unknown as TransactionInput;
+        customerName: trimmedCustomer || undefined,
+        metalPurity: calc.metalPurity ?? undefined,
+        metalBalance: calc.metalBalance ?? undefined,
+        stoneChargePerGram: calc.stoneChargePerGram ?? undefined,
+        cashBalance: calc.cashBalance ?? undefined,
+      };
       return txInput;
     });
   };
